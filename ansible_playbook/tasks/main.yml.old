@@ -1,0 +1,414 @@
+---
+- hosts: localhost
+  tasks:
+    # - name: Create Cluster
+    # na_ontap_cluster:
+    #   state: present
+    #   cluster_name: new_cluster
+    #   hostname: "{{ node1['ip'] }}"
+    #   username: "admin"
+    #   password: ""
+    # - name: Add Base License
+    #   na_ontap_cluster:
+    #     state: present
+    #     cluster_name: "{{ cluster }}"
+    #     license_code: "{{ base_license }}"
+    #     hostname: "{{ netapp_hostname }}"
+    #     username: "{{ netapp_username }}"
+    #     password: "{{ netapp_password }}"
+    # - name: Join Cluster
+    #   na_ontap_cluster:
+    #     state: present
+    #     cluster_ip_address: "{{ hostname }}"
+    #     hostname: "{{ node2['ip'] }}"
+    #     username: "admin"
+    #     password: ""
+    - name: Set Login Message
+      na_ontap_motd:
+        state: present
+        motd_message : "{{ motd }}"
+        hostname: "{{ hostname }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        #ontapi: "{{ ontap_facts.ontap_version }}"
+        https: "{{ https_global }}"
+        validate_certs: "{{ validate_certs_global }}"
+        vserver: "{{ cluster }}"
+      when: motd != None
+      
+    - name: Get NetApp info (Password Authentication)
+      na_ontap_gather_facts:
+        state: info
+        hostname: "{{ hostname }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        https: "{{ https_global }}"
+        validate_certs: "{{ validate_certs_global }}"
+    
+    - name: Rename node1
+      na_ontap_node:
+        hostname: "{{ hostname }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        validate_certs: "{{ validate_certs_global }}"
+        https: "{{ https_global }}"
+        from_name: "{{ item }}"
+        name: "{{ hosts['node1'].name }}"
+      loop: "{{ ontap_facts.cluster_node_info | list }}"
+      with_items: "{{ ontap_facts.cluster_node_info | list }}"
+      when: 
+        - item.endswith("1") 
+     
+
+    - name: Rename node2
+      na_ontap_node:
+        hostname: "{{ hostname }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        validate_certs: "{{ validate_certs_global }}"
+        https: "{{ https_global }}"
+        from_name: "{{ item }}"
+        name: "{{ hosts['node2'].name }}"
+      loop: "{{ ontap_facts.cluster_node_info | list }}"
+      with_items: "{{ ontap_facts.cluster_node_info | list }}"
+      when: 
+        - item.endswith("2") 
+        
+    - name: Rename Cluster
+      na_ontap_command:
+        hostname: "{{ hostname }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        command: ['cluster', 'identity', 'modify', '-name', "{{ cluster }}"]
+        validate_certs: "{{ validate_certs_global }}"
+        https: "{{ https_global }}"
+        
+    - name: Add licenses
+      na_ontap_license:
+        state: present
+        hostname: "{{ hostname }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        validate_certs: "{{ validate_certs_global }}"
+        https: "{{ https_global }}"
+        license_codes: "{{ license_codes |list }}"
+ 
+    - name: Clean Unused licenses
+      na_ontap_command:
+        hostname: "{{ hostname }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        command: ['set', 'd', '-c', 'off', ';', 'license', 'clean-up', '-unused', 'true']
+        validate_certs: "{{ validate_certs_global }}"
+        https: "{{ https_global }}"     
+
+        
+    - name: Remove Disk Partition Ownership from Node02 #NEED TO FIX ASTERISK * SIGN
+      na_ontap_command:
+        hostname: "{{ hostname }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        #command: ['set', 'd', '-c', 'off', ';', 'disk', 'option', 'modify', '-node', '*', '-autoassign', 'off', ';', 'disk', 'partition', 'removeowner', '{-partition', '*P1', '-container-type', 'spare', '-owner-node-name', '*2}']
+        command: ['set', 'd', '-c', 'off', ';', 'disk', 'removeowner', '{ -owner', "{{ hosts['node2'].name }}", '-container-type', 'spare }']
+        validate_certs: "{{ validate_certs_global }}"
+        https: "{{ https_global }}"
+
+    - name: Assign Disk Partition Ownership to Node01
+      na_ontap_command:
+        hostname: "{{ hostname }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        #command: ['set', 'd', '-c', 'off', ';', 'disk', 'partition', 'assign', '{-container-type', 'unassigned', '}', '-owner', "{{ hosts['node1'].name }}"]
+        command: ['set', 'd', '-c', 'off', ';', 'disk', 'assign', '-all', 'true', '-node', "{{ hosts['node1'].name }}"]
+        validate_certs: "{{ validate_certs_global }}"
+        https: "{{ https_global }}"
+
+    - name: Zero Spares and Enable Auto-Assign #NEED TO FIX ASTERISK * SIGN
+      na_ontap_command:
+        hostname: "{{ hostname }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        #command: ['set', 'd', '-c', 'off', ';', 'disk', 'zerospares', '-use-physical-zeroing', 'false', ';', 'disk', 'option', 'modify', '-node', '*', '-autoassign', 'on']
+        command: ['set', 'd', '-c', 'off', ';', 'disk', 'zerospares']
+        validate_certs: "{{ validate_certs_global }}"
+        https: "{{ https_global }}"
+ 
+# Create aggregate_name
+    - name: Create Aggregates
+      na_ontap_aggregate:
+        state: present
+        service_state: online
+        name: "{{ hosts['node1'].aggregate.name }}"
+        disk_count: "{{ hosts['node1'].aggregate.diskcount }}"
+        nodes: "{{ hosts['node1'].name }}"
+        hostname: "{{ hostname }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        https: "{{ https_global }}"
+        validate_certs: "{{ validate_certs_global }}"
+        
+    - name: Setup DNS
+      na_ontap_dns:
+        state: present
+        vserver: "{{ item.vserver }}"
+        domains: "{{ item.dns_domains }}"
+        nameservers: "{{ item.dns_nameservers }}"
+        hostname: "{{ hostname }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        #ontapi: "{{ ontap_facts.ontap_version }}"
+        https: "{{ https_global }}"
+        validate_certs: "{{ validate_certs_global }}"
+        skip_validation: "true"
+      with_items:
+        "{{ dns }}"
+      when: dns != None
+
+    #- name: Set NTP Server
+    #  na_ontap_ntp:
+    #   state: present
+    #   server_name: "{{ item.server_name }}"
+    #   version: "{{ item.version }}"
+    #   hostname: "{{ hostname }}"
+    #   username: "{{ username }}"
+    #   password: "{{ password }}"
+    #   #ontapi: "{{ ontap_facts.ontap_version }}"
+    #   https: "{{ https_global }}"
+    #   validate_certs: "{{ validate_certs_global }}"
+    # with_items:
+    #   "{{ ntp }}"
+    # when: ntp != None
+
+    - name: Create SNMP community
+      na_ontap_snmp:
+        community_name: "{{ item.community_name }}"
+        access_control: "{{ item.access_control }}"
+        hostname: "{{ hostname }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        #ontapi: "{{ ontap_facts.ontap_version }}"
+        https: "{{ https_global }}"
+        validate_certs: "{{ validate_certs_global }}"
+      with_items:
+        "{{ snmp }}"
+      when: snmp != None
+
+    - name: Remove Ports from Default Broadcast Domain
+      na_ontap_broadcast_domain_ports:
+        state: absent
+        broadcast_domain: "Default"
+        ports: "{{ item.node }}:{{ item.port }}"
+        hostname: "{{ hostname }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        https: "{{ https_global }}"
+        validate_certs: "{{ validate_certs_global }}"
+      with_items:
+        "{{ ports }}"
+      when: ports != None
+
+    - name: Modify Net Port
+      na_ontap_net_port:
+        state: present
+        node: "{{ item.node }}"
+        port: "{{ item.port }}"
+        mtu: "{{ item.mtu }}"
+        autonegotiate_admin: "{{ item.autonegotiate }}"
+        flowcontrol_admin: "{{ item.flowcontrol }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        hostname: "{{ hostname }}"
+        #ontapi: "{{ ontap_facts.ontap_version }}"
+        https: "{{ https_global }}"
+        validate_certs: "{{ validate_certs_global }}"
+      with_items:
+        "{{ ports }}"
+      when: ports != None
+
+    - name: Create ifgrp
+      na_ontap_net_ifgrp:
+        state: present
+        distribution_function: "{{ item.distribution_function }}" #goes to default
+        mode: "{{ item.mode }}" #goes to default
+        name: "{{ item.name }}"
+        ports: "{{ item.ports }}"
+        node: "{{ item.node }}"
+        hostname: "{{ hostname }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        https: "{{ https_global }}"
+        validate_certs: "{{ validate_certs_global }}"
+      with_items:
+        "{{ ifgrps }}"
+      when: ifgrps != None
+
+    - name: Modify Net Port ifgrp
+      na_ontap_net_port:
+        state: present
+        node: "{{ item.node }}"
+        port: "{{ item.name }}"
+        mtu: "{{ item.mtu }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        hostname: "{{ hostname }}"
+        #ontapi: "{{ ontap_facts.ontap_version }}"
+        https: "{{ https_global }}"
+        validate_certs: "{{ validate_certs_global }}"
+      with_items:
+        "{{ ifgrps }}"
+      when: ifgrps != None
+
+    - name: Create VLAN
+      na_ontap_net_vlan:
+        state: present
+        vlanid: "{{ item.vlanid }}"
+        node: "{{ item.node }}"
+        parent_interface: "{{ item.phy_interface }}"
+        hostname: "{{ hostname }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        https: "{{ https_global }}"
+        validate_certs: "{{ validate_certs_global }}"
+      with_items:
+        "{{ vlans }}"
+      when: vlans != None
+
+    - name: create broadcast domain
+      na_ontap_broadcast_domain:
+        state: present
+        broadcast_domain: "{{ item.name }}"
+        mtu: "{{ item.mtu }}"
+        ipspace: "Default"
+        ports: "{{ item.ports }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        hostname: "{{ hostname }}"
+        #ontapi: "{{ ontap_facts.ontap_version }}"
+        https: "{{ https_global }}"
+        validate_certs: "{{ validate_certs_global }}"
+      with_items:
+        "{{ bcasts }}"
+      when: bcasts != None
+
+    - name: Create Vserver
+      na_ontap_svm:
+        state: present
+        name: "{{ item.name }}"
+        root_volume: "{{ item.name }}_root"
+        root_volume_aggregate: "{{ item.root_volume_aggregate }}"
+        root_volume_security_style: "{{ item.root_volume_security_style}}"
+        hostname: "{{ hostname }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        https: "{{ https_global }}"
+        validate_certs: "{{ validate_certs_global }}"
+      with_items:
+        "{{ vservers }}"
+      when: vservers != None
+
+    - name: Create interfaces
+      na_ontap_interface:
+        state: present
+        interface_name: "{{ item.name }}"
+        home_port: "{{ item.port }}"
+        home_node: "{{ item.node }}"
+        role: data
+        protocols: cifs,nfs
+        admin_status: up
+        address: "{{ item.address }}"
+        netmask: "{{ item.netmask }}"
+        force_subnet_association: false
+        vserver: "{{ item.vserver }}"
+        hostname: "{{ hostname }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        https: "{{ https_global }}"
+        validate_certs: "{{ validate_certs_global }}"
+      with_items:
+        "{{ lifs }}"
+      when: lifs != None
+      
+    - name: Create Routes
+      na_ontap_net_routes:
+        state: present
+        vserver: "{{ item.vserver }}"
+        hostname: "{{ hostname }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        https: "{{ https_global }}"
+        validate_certs: "{{ validate_certs_global }}"
+        destination: "{{ item.destination }}"
+        gateway: "{{ item.gateway }}"
+        metric: 20
+      with_items:
+        "{{ gateway }}"
+      when: gateway != None
+          
+    - name: Create Export Policy Rules
+      na_ontap_export_policy_rule:
+        state: present
+        allow_suid: true
+        client_match: "{{ item.client_match }}"
+        policy_name: "default"
+        protocol: "nfs"
+        ro_rule: "any"
+        rw_rule: "any"
+        super_user_security: "any"
+        vserver: "{{ item.vserver }}"
+        hostname: "{{ hostname }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        https: "{{ https_global }}"
+        validate_certs: "{{ validate_certs_global }}"
+      with_items:
+        "{{ exportrules }}"
+      when: exportrules != None
+
+    - name: Add Volumes
+      na_ontap_volume:
+        state: present
+        name: "{{ item.name }}"
+        junction_path: "/{{ item.name }}"
+        is_infinite: False
+        aggregate_name: "{{ item.aggr }}"
+        size: "{{ item.size }}"
+        size_unit: gb
+        space_guarantee: none
+        policy: "{{ item.policy }}"
+        percent_snapshot_space: "{{ item.snappercent }}"
+        vserver: "{{ item.vserver }}"
+        volume_security_style: "{{ item.securitystyle }}"
+        wait_for_completion: false
+        hostname: "{{ hostname }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        https: "{{ https_global }}"
+        validate_certs: "{{ validate_certs_global }}"
+      with_items:
+        "{{ volumes }}"
+      when: volumes != None
+      
+    - name: Create cifs_server
+      na_ontap_cifs_server:
+        state: present
+        cifs_server_name: "{{ item.cifs_server_name}}"
+        vserver: "{{ item.vserver }}"
+        workgroup: "{{ item.workgroup }}"
+        hostname: "{{ hostname }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        https: "{{ https_global }}"
+        validate_certs: "{{ validate_certs_global }}"
+      with_items:
+        "{{ cifs}}"      
+      when: cifs != None        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        

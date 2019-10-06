@@ -1,0 +1,79 @@
+{
+	"clusters": [
+		{
+			"cluster-name": "Grenada",
+			"ip": "10.65.59.100",
+			"user": "admin",
+			"password": "netapp01",
+			"timezone": "Europe/Berlin",
+			"contact": "ng-muccbc-admins@netapp.com",
+			"location": "MUC CBC RACK",
+			"remote-cluster": "",
+			"http-enabled": "true",
+			"net-dns": {
+				"domains": {
+					"string": [
+						"muccbc.hq.netapp.com"
+					]
+				},
+				"name-servers": {
+					"ip-address": [
+						"10.65.56.5",
+						"10.65.56.6"
+					]
+				}
+			},
+			"licenses": {
+				"prot01": "SGHLQDBBVAAAAAAAAAAAAAAAAAAA",
+				"prot02": "QVCPRDBBVAAAAAAAAAAAAAAAAAAA",
+				"prot03": "MZTWTDBBVAAAAAAAAAAAAAAAAAAA",
+				"prot04": "EBFARDBBVAAAAAAAAAAAAAAAAAAA",
+				"prot05": "GMJWPDBBVAAAAAAAAAAAAAAAAAAA",
+				"prot06": "WINPVDBBVAAAAAAAAAAAAAAAAAAA",
+				"prot07": "AFWHTDBBVAAAAAAAAAAAAAAAAAAA",
+				"prot08": "IDLEWDBBVAAAAAAAAAAAAAAAAAAA",
+				"prot09": "OKYSSDBBVAAAAAAAAAAAAAAAAAAA",
+				"prot10": "YTRLUDBBVAAAAAAAAAAAAAAAAAAA"
+			},
+			"ntp-servers": [
+				{
+					"server-name": "10.65.56.5",
+					"version": "auto",
+					"is-preferred": "true"
+				}
+			],
+			"net-interfaces": [
+				{
+					"interface-name": "cluster_mgmt",
+					"role": "cluster-mgmt",
+					"home-node": "grenada-01",
+					"home-port": "e0i",
+					"address": "10.65.59.100",
+					"netmask": "255.255.255.0"
+				}
+				],
+			"net-routes": [
+				{
+					"destination": "0.0.0.0/0",
+					"gateway": "10.65.59.1"
+				}
+			],
+			"cluster-nodes": [
+				{
+					"node-name": "grenada-01",
+					"user": "admin",
+					"password": "netapp01",
+					"ip": "10.65.59.101",
+					"sp-ip": "172.30.10.101"
+				},
+				{
+					"node-name": "grenada-02",
+					"user": "admin",
+					"password": "netapp01",
+					"ip": "10.65.59.102",
+					"sp-ip": "172.30.10.102"
+				}
+				]
+		}
+	]
+}
