@@ -242,11 +242,11 @@ for cluster in json_data["clusters"]:
 for x in setup_threads:
     x.join()
 
-print("Cluster Setup Finished succesfully !! Let's Runn Ansible playbook..")
+print("Cluster Setup Finished succesfully !! Let's Run Ansible playbook..")
 
-os.system('rm -rf nohup.out ')
+os.system('rm -rf nohup.out')
 os.system('/opt/ansible_playbook/ansible-playbook-command.sh')
-os.system('tail -f nohup.out')
+#os.system('tail -f nohup.out')
 
 
 

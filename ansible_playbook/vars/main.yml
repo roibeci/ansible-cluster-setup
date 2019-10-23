@@ -1,21 +1,21 @@
 base_license: SMKQROWJNQYQSDAAAAAAAAAAAAAA 
-cluster: Grenada
-hostname: "10.65.59.100"
+cluster: Bucicluster
+hostname: "10.61.116.100"
 username: "admin"
-password: "netapp01"
+password: "cpoc3518"
 https_global: "true"
 validate_certs_global: "false"
 
 hosts:
   node1:
-    name: "Grenada-01" 
-    ip: "10.65.59.101"
+    name: "Bucicluster-01" 
+    ip: "10.61.116.101"
     aggregate: 
        name: "n1_data"
        diskcount: "7"
   node2: 
-    name: "Grenada-02"
-    ip: "10.65.59.102"
+    name: "Bucicluster-02"
+    ip: "10.61.116.102"
     aggregate: 
        name: "n2_data"
        diskcount: "5"    
@@ -97,18 +97,3 @@ volumes:
   - { name: vol3, aggr: "{{ hosts['node1'].aggregate.name }}", size: 10, policy: EP2, snappercent: 3, vserver: SVM_David, securitystyle: unix,  }
   - { name: vol4, aggr: "{{ hosts['node1'].aggregate.name }}", size: 10, policy: EP1, snappercent: 3, vserver: SVM_David, securitystyle: unix,  }
 
-
-# interface1:
-#     name: "lif1"
-#     node: "{{ hosts['node1'] }}"
-#     port: "e0a"
-#     address: "1.1.1.1"
-#     netmask: "255.255.255.0"
-#     vserver: "{{ vserver['name'] }}"
-#   interface2:
-#     name: "lif2"
-#     node: "{{ hosts['node1'] }}"
-#     port: "e0a"
-#     address: "1.1.1.2"
-#     netmask: "255.255.255.0"
-#     vserver: "SVM_Beci"

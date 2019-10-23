@@ -91,7 +91,7 @@
         hostname: "{{ hostname }}"
         username: "{{ username }}"
         password: "{{ password }}"
-        command: ['set d -c off;  disk option modify -node ',"{{ hosts['node1'].name }}",' -autoassign off;disk option modify -node ',"{{ hosts['node2'].name }}",' -autoassign off;disk partition removeowner { -partition-index 1 -owner-node-name ',"{{ hosts['node2'].name }}" , ' -container-type spare }']
+        command: ['set d -c off;  disk option modify -node ',"{{ hosts['node1'].name }}",' -autoassign off;disk option modify -node ',"{{ hosts['node2'].name }}",' -autoassign off;disk partition removeowner { -partition-index 2 -owner-node-name ',"{{ hosts['node2'].name }}" , ' -container-type spare }']
         validate_certs: "{{ validate_certs_global }}"
         https: "{{ https_global }}"
         
