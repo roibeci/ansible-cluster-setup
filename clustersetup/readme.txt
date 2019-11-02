@@ -5,6 +5,7 @@ To run this script you will need :
 - NetApp Ansible Modules
 - ONTAP 9.6+
 - Run the nodemgmt setup (only setting an IP - not cluster wizzard)
+- Set password for admin user
 
 python cluster_install_RESTv2.py clustersetup_light2.json
 
