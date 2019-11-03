@@ -245,7 +245,7 @@ for x in setup_threads:
 print("Cluster Setup Finished succesfully !! Let's Run Ansible playbook..")
 
 os.system('rm -rf nohup.out')
-os.system('/opt/ansible_playbook/ansible-playbook-command.sh')
+os.system('../ansible_playbook/ansible-playbook-command.sh')
 #os.system('tail -f nohup.out')
 
 
