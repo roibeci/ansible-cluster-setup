@@ -1,8 +1,8 @@
 #!/usr/bin/python3
 
-# Author:               David BENADIBA
+# Authors:             David BENADIBA, Roi Becidan
 # Date:                 Aug 18th, 2019
-# Description:  Cluster setup on JSON input with ONTAP9.6
+# Description:  Cluster setup on JSON input with ONTAP 9.6
 
 from threading import Thread
 import sys
@@ -148,8 +148,8 @@ def cluster_setup(cluster):
             if response:
                 print(response.json())
             else:
-                print("WE DIDNT GET RESPONSE")
-                # sys.exit()
+                print("NO RESPONSE FROM NODE " + body["management_interface"]["ip"] + ". Exiting..")
+                sys.exit()
             status = handle_job(s, response)
             if (status == "success"):
                 print("---> " + node["node-name"] + ": SUCCESS")

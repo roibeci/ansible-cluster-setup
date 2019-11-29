@@ -1,6 +1,6 @@
 base_license: SMKQROWJNQYQSDAAAAAAAAAAAAAA 
 cluster: na-site
-hostname: "10.61.116.100"
+hostname: "x.x.x.100"
 username: "admin"
 password: "cpoc3518"
 https_global: "true"
@@ -9,13 +9,13 @@ validate_certs_global: "false"
 hosts:
   node1:
     name: "na-site-01" 
-    ip: "10.61.116.101"
+    ip: "x.x.x.101"
     aggregate: 
        name: "csu1a_aggr0"
        diskcount: "19"
   node2: 
     name: "na-site-02"
-    ip: "10.61.116.102"   
+    ip: "x.x.x.102"   
     
 license_codes: 
   - YVUCRRRRYVHXCFABGAAAAAAAAAAA 
@@ -31,12 +31,12 @@ license_codes:
 motd: "Welcome to TZAYAD Elbit Storage System. This is a monitored system! "
 
 dns:
-  - { dns_domains: cpoc.local, dns_nameservers: 10.61.116.5, vserver: "{{ cluster }}"}
-  - { dns_domains: cpoc.local, dns_nameservers: 172.16.1.200, vserver: vm_svm}
-  - { dns_domains: cpoc.local, dns_nameservers: 172.16.1.200, vserver: data_svm}
+  - { dns_domains: domain.local, dns_nameservers: x.x.x.5, vserver: "{{ cluster }}"}
+  - { dns_domains: domain.local, dns_nameservers: x.x.x.200, vserver: vm_svm}
+  - { dns_domains: domain.local, dns_nameservers: x.x.x.200, vserver: data_svm}
 
 ntp:
-  - { server_name: cpoc.local, version: auto }
+  - { server_name: domain.local, version: auto }
 
 snmp:
   - { community_name: tzayad, access_control: ro }
@@ -70,26 +70,26 @@ vservers:
   - { name: data_svm, root_volume_aggregate: "{{ hosts['node1'].aggregate.name }}" , root_volume_security_style: unix }
 
 lifs:
-  - { name: vmk-nfs, node: "{{ hosts['node1'].name }}", port: a0a-400, address: 10.61.116.105, netmask: 255.255.255.0, vserver: vm_svm }
+  - { name: vmk-nfs, node: "{{ hosts['node1'].name }}", port: a0a-400, address: x.x.x.105, netmask: 255.255.255.0, vserver: vm_svm }
   - { name: nfs, node: "{{ hosts['node2'].name }}", port: a0a-300, address: 1.1.2.2, netmask: 255.255.255.0, vserver: data_svm }
   - { name: cifs, node: "{{ hosts['node2'].name }}", port: a0a-62, address: 1.3.2.2, netmask: 255.255.255.0, vserver: data_svm }
 
 gateway: #if a different default route/gateway then the clusters default needs to be added
-  - { vserver: vm_svm, destination: 0.0.0.0/0, gateway: 10.61.116.1 }
-  - { vserver: data_svm, destination: 0.0.0.0/0, gateway: 10.61.116.1 }
+  - { vserver: vm_svm, destination: 0.0.0.0/0, gateway: x.x.x.1 }
+  - { vserver: data_svm, destination: 0.0.0.0/0, gateway: x.x.x.1 }
 
 cifs: # Vservers to join to an AD Domain
-  - { vserver: vm_svm, cifs_server_name: netapp1, workgroup: cpoc.local, force: true }
-  - { vserver: data_svm, cifs_server_name: netapp2, workgroup: cpoc.local, force: true }
+  - { vserver: vm_svm, cifs_server_name: netapp1, workgroup: domain.local, force: true }
+  - { vserver: data_svm, cifs_server_name: netapp2, workgroup: domain.local, force: true }
   
 nfs: # Vservers to configure for NFS
   - { vserver: vm_svm, nfsv3: enabled, vstorage: enabled }
   - { vserver: data_svm, nfsv3: enabled, vstorage: enabled }
 
 exportrules:
-  - { name: EP1, client_match: 10.61.116.0/24, vserver: vm_svm }
+  - { name: EP1, client_match: x.x.x.0/24, vserver: vm_svm }
   - { name: EP1, client_match: 1.1.1.0/24, vserver: vm_svm }
-  - { name: EP1, client_match: 10.68.65.0/24, vserver: data_svm }
+  - { name: EP1, client_match: x.x.x.0/24, vserver: data_svm }
   
 volumes:
   - { name: vms_datastore_01, aggr: "{{ hosts['node1'].aggregate.name }}", size: 6144, policy: EP1, snappercent: 3, vserver: vm_svm, securitystyle: unix,  }

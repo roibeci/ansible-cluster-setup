@@ -1,21 +1,21 @@
 base_license: SMKQROWJNQYQSDAAAAAAAAAAAAAA 
 cluster: Bucicluster
-hostname: "10.61.116.100"
+hostname: "x.x.x.100"
 username: "admin"
-password: "cpoc3518"
+password: "enter_you_admin_password"
 https_global: "true"
 validate_certs_global: "false"
 
 hosts:
   node1:
     name: "Bucicluster-01" 
-    ip: "10.61.116.101"
+    ip: "x.x.x.101"
     aggregate: 
        name: "n1_data"
        diskcount: "7"
   node2: 
     name: "Bucicluster-02"
-    ip: "10.61.116.102"
+    ip: "x.x.x.102"
     aggregate: 
        name: "n2_data"
        diskcount: "5"    
@@ -34,9 +34,9 @@ license_codes:
 motd: "Welcome to TZAYAD Elbit Storage System. This is a monitored system! "
 
 dns:
-  - { dns_domains: hci.local, dns_nameservers: 172.16.1.200, vserver: "{{ cluster }}"}
-  - { dns_domains: hci.local, dns_nameservers: 172.16.1.200, vserver: SVM_Beci}
-  - { dns_domains: hci.local, dns_nameservers: 172.16.1.200, vserver: SVM_David}
+  - { dns_domains: hci.local, dns_nameservers: x.x.x.200, vserver: "{{ cluster }}"}
+  - { dns_domains: hci.local, dns_nameservers: x.x.x.200, vserver: SVM_Beci}
+  - { dns_domains: hci.local, dns_nameservers: x.x.x.200, vserver: SVM_David}
 
 ntp:
   - { server_name: hci.local, version: auto }
@@ -74,8 +74,8 @@ lifs:
   - { name: lif1, node: "{{ hosts['node2'].name }}", port: a0a-300, address: 1.3.2.2, netmask: 255.255.255.0, vserver: SVM_David }
 
 gateway: #if a different default route/gateway then the clusters default needs to be added
-  - { vserver: SVM_Beci, destination: 0.0.0.0/0, gateway: 172.16.1.200 }
-  - { vserver: SVM_David, destination: 0.0.0.0/0, gateway: 172.16.1.200 }
+  - { vserver: SVM_Beci, destination: 0.0.0.0/0, gateway: x.x.x.200 }
+  - { vserver: SVM_David, destination: 0.0.0.0/0, gateway: x.x.x.200 }
 
 cifs: # Vservers to join to an AD Domain
   - { vserver: SVM_Beci, cifs_server_name: netapp1, workgroup: hci, force: true }
@@ -86,9 +86,9 @@ nfs: # Vservers to configure for NFS
   - { vserver: SVM_David, nfsv3: enabled, vstorage: enabled }
 
 exportrules:
-  - { name: EP1, client_match: 10.68.65.0/24, vserver: SVM_Beci }
+  - { name: EP1, client_match: x.x.x.0/24, vserver: SVM_Beci }
   - { name: EP1, client_match: 1.1.1.0/24, vserver: SVM_Beci }
-  - { name: EP1, client_match: 10.68.65.0/24, vserver: SVM_David }
+  - { name: EP1, client_match: x.x.x.0/24, vserver: SVM_David }
   - { name: EP2, client_match: 1.1.1.0/24, vserver: SVM_David }
   
 volumes:
