@@ -78,8 +78,9 @@ gateway: #if a different default route/gateway then the clusters default needs t
   - { vserver: SVM_David, destination: 0.0.0.0/0, gateway: x.x.x.200 }
 
 cifs: # Vservers to join to an AD Domain
-  - { vserver: SVM_Beci, cifs_server_name: netapp1, workgroup: hci, force: true }
-  - { vserver: SVM_David, cifs_server_name: netapp2, workgroup: hci, force: true }
+  - { vserver: SVM_Beci, cifs_server_name: svm_beci, domain: "DOMAIN", admin_user_name: "USER",admin_password: "PASS", force: true }
+  - { vserver: SVM_David, cifs_server_name: svm_david, domain: "DOMAIN", admin_user_name: "USER",admin_password: "PASS", force: true }
+
   
 nfs: # Vservers to configure for NFS
   - { vserver: SVM_Beci, nfsv3: enabled, vstorage: enabled }
