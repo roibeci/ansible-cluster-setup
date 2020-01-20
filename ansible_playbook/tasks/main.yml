@@ -123,6 +123,7 @@
         service_state: online
         name: "{{ hosts['node1'].aggregate.name }}"
         disk_count: "{{ hosts['node1'].aggregate.diskcount }}"
+        raid_size: "{{ hosts['node1'].aggregate.raidsize }}"
         nodes: "{{ hosts['node1'].name }}"
         hostname: "{{ hostname }}"
         username: "{{ username }}"
