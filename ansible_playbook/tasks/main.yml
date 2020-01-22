@@ -376,8 +376,10 @@
       na_ontap_cifs_server:
         state: present
         cifs_server_name: "{{ item.cifs_server_name}}"
+        admin_user_name: "{{ item.admin_user }}"
+        admin_password: "{{ item.admin_password }}"
         vserver: "{{ item.vserver }}"
-        workgroup: "{{ item.workgroup }}"
+        domain: "{{ item.domain }}"
         hostname: "{{ hostname }}"
         username: "{{ username }}"
         password: "{{ password }}"
