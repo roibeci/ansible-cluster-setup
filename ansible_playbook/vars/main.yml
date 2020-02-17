@@ -1,4 +1,4 @@
-base_license: SMKQROWJNQYQSDAAAAAAAAAAAAAA 
+base_license: XXXXXXXXXXXXXXXX #Optional since ontap 9.2+
 cluster: Bucicluster
 hostname: "x.x.x.100"
 username: "admin"
@@ -21,25 +21,18 @@ hosts:
        diskcount: "5"    
     
 license_codes: 
-  - YVUCRRRRYVHXCFABGAAAAAAAAAAA 
-  - WKQGSRRRYVHXCFABGAAAAAAAAAAA   
-  - MBXNQRRRYVHXCFABGAAAAAAAAAAA   
-  - MHEYKUNFXMSMUCEZFAAAAAAAAAAA 
-  - ANGJKUNFXMSMUCEZFAAAAAAAAAAA   
-  - KWZBMUNFXMSMUCEZFAAAAAAAAAAA     
-  - UFNPSPZFXNVOGDAAAAAAAAAAAAAA
-  - ILPASPZFXNVOGDAAAAAAAAAAAAAA
+  - XXXXXXXXXXXXXXXXXXXXXXXXXXXX #Enter licene code for protocol in here   
+  - XXXXXXXXXXXXXXXXXXXXXXXXXXXX 
 
-
-motd: "Welcome to TZAYAD Elbit Storage System. This is a monitored system! "
+motd: "Welcome to XXXXX Storage System. This is a monitored system! "
 
 dns:
-  - { dns_domains: hci.local, dns_nameservers: x.x.x.200, vserver: "{{ cluster }}"}
-  - { dns_domains: hci.local, dns_nameservers: x.x.x.200, vserver: SVM_Beci}
-  - { dns_domains: hci.local, dns_nameservers: x.x.x.200, vserver: SVM_David}
+  - { dns_domains: domain.local, dns_nameservers: x.x.x.200, vserver: "{{ cluster }}"}
+  - { dns_domains: domain.local, dns_nameservers: x.x.x.200, vserver: SVM_Beci}
+  - { dns_domains: domain.local, dns_nameservers: x.x.x.200, vserver: SVM_David}
 
 ntp:
-  - { server_name: hci.local, version: auto }
+  - { server_name: domain.local, version: auto }
 
 snmp:
   - { community_name: ansible_snmp, access_control: ro }
