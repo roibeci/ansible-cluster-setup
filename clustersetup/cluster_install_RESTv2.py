@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-# Authors:             David BENADIBA, Roi Becidan
+# Authors:             Adrian Bronder,David BENADIBA, Roi Becidan
 # Date:                 Aug 18th, 2019
 # Description:  Cluster setup on JSON input with ONTAP 9.6
 
