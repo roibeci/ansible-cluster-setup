@@ -5,9 +5,9 @@
 			"ip": "x.x.x.100",
 			"user": "admin",
 			"password": "enter_password_here",
-			"timezone": "Europe/Berlin",
-			"contact": "ng-muccbc-admins@netapp.com",
-			"location": "MUC CBC RACK",
+			"timezone": "Asia/Jerusalem",
+			"contact": "your@email.com",
+			"location": "RACK NUMBER",
 			"remote-cluster": "",
 			"http-enabled": "true",
 			"net-interfaces": [
