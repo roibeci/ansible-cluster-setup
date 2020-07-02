@@ -131,20 +131,21 @@
         https: "{{ https_global }}"
         validate_certs: "{{ validate_certs_global }}"
 
-    #- name: Set NTP Server
-    #  na_ontap_ntp:
-    #   state: present
-    #   server_name: "{{ item.server_name }}"
-    #   version: "{{ item.version }}"
-    #   hostname: "{{ hostname }}"
-    #   username: "{{ username }}"
-    #   password: "{{ password }}"
-    #   #ontapi: "{{ ontap_facts.ontap_version }}"
-    #   https: "{{ https_global }}"
-    #   validate_certs: "{{ validate_certs_global }}"
-    # with_items:
-    #   "{{ ntp }}"
-    # when: ntp != None
+    - name: Set NTP Server
+      ignore_errors: yes
+      na_ontap_ntp:
+        state: present
+        server_name: "{{ item.server_name }}"
+        version: "{{ item.version }}"
+        hostname: "{{ hostname }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        #ontapi: "{{ ontap_facts.ontap_version }}"
+        https: "{{ https_global }}"
+        validate_certs: "{{ validate_certs_global }}"
+      with_items:
+        "{{ ntp }}"
+      when: ntp != None
 
     - name: Create SNMP community
       na_ontap_snmp:
