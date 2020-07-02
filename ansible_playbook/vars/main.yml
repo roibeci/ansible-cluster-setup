@@ -81,9 +81,11 @@ gateway: #if a different default route/gateway then the clusters default needs t
   - { vserver: SVM_Beci, destination: 0.0.0.0/0, gateway: x.x.x.200 }
   - { vserver: SVM_David, destination: 0.0.0.0/0, gateway: x.x.x.200 }
 
-cifs: # Vservers to join to an AD Domain
-  - { vserver: SVM_Beci, cifs_server_name: svm_beci, domain: "DOMAIN", admin_user_name: "USER",admin_password: "PASS", force: true }
-  - { vserver: SVM_David, cifs_server_name: svm_david, domain: "DOMAIN", admin_user_name: "USER",admin_password: "PASS", force: true }
+cifsad: # Vservers to join to an AD Domain
+#  - { vserver: SVM_Beci, cifs_server_name: svm_beci, domain: "DOMAIN", admin_user: "USER",admin_password: "PASS", force: true } # Example 1 - Active Directory
+
+cifsworkgroup: # Vservers to join to a local workgroup
+  - { vserver: SVM_David, cifs_server_name: netapp2, workgroup: test, force: true }
 
   
 nfs: # Vservers to configure for NFS
@@ -97,8 +99,8 @@ exportrules:
   - { name: EP2, client_match: 1.1.1.0/24, vserver: SVM_David }
   
 volumes:
-  - { name: vol1, aggr: "{{ hosts['node1'].aggregate.name }}", size: 10, policy: EP1, snappercent: 3, vserver: SVM_Beci, securitystyle: unix,  }
-  - { name: vol2, aggr: "{{ hosts['node1'].aggregate.name }}", size: 10, policy: EP1, snappercent: 3, vserver: SVM_Beci, securitystyle: unix,  }
-  - { name: vol3, aggr: "{{ hosts['node1'].aggregate.name }}", size: 10, policy: EP2, snappercent: 3, vserver: SVM_David, securitystyle: unix,  }
-  - { name: vol4, aggr: "{{ hosts['node1'].aggregate.name }}", size: 10, policy: EP1, snappercent: 3, vserver: SVM_David, securitystyle: unix,  }
+  - { name: vol1, aggr: "{{ hosts['node1'].aggregate.name }}", size: 10, policy: EP1, snappercent: 3, vserver: SVM_Beci, securitystyle: unix  }
+  - { name: vol2, aggr: "{{ hosts['node1'].aggregate.name }}", size: 10, policy: EP1, snappercent: 3, vserver: SVM_Beci, securitystyle: unix  }
+  - { name: vol3, aggr: "{{ hosts['node1'].aggregate.name }}", size: 10, policy: EP2, snappercent: 3, vserver: SVM_David, securitystyle: unix  }
+  - { name: vol4, aggr: "{{ hosts['node1'].aggregate.name }}", size: 10, policy: EP1, snappercent: 3, vserver: SVM_David, securitystyle: unix  }
 
