@@ -176,6 +176,7 @@
       when: ports != None
 
     - name: Modify Net Port
+      ignore_errors: yes
       na_ontap_net_port:
         state: present
         node: "{{ item.node }}"
@@ -265,6 +266,7 @@
         root_volume: "{{ item.name }}_root"
         root_volume_aggregate: "{{ item.root_volume_aggregate }}"
         root_volume_security_style: "{{ item.root_volume_security_style}}"
+        aggr_list: "{{ hosts['node1'].aggregate.name }}"
         hostname: "{{ hostname }}"
         username: "{{ username }}"
         password: "{{ password }}"
@@ -328,6 +330,26 @@
       with_items:
         "{{ dns }}"
       when: dns != None
+
+    - name: Modify Export Policy Default to 0.0.0.0/0
+      na_ontap_export_policy_rule:
+        state: present
+        allow_suid: true
+        client_match: "0.0.0.0/0"
+        policy_name: "default"
+        protocol: "nfs"
+        ro_rule: "any"
+        rw_rule: "any"
+        super_user_security: "any"
+        vserver: "{{ item.name }}"
+        hostname: "{{ hostname }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        https: "{{ https_global }}"
+        validate_certs: "{{ validate_certs_global }}"
+      with_items:
+        "{{ vservers }}"
+      when: vservers != None
       
     - name: Create Export Policy Rules
       na_ontap_export_policy_rule:
@@ -373,7 +395,7 @@
         "{{ volumes }}"
       when: volumes != None
 
-    - name: Create cifs_server
+    - name: Create CIFS server - Active Directory
       na_ontap_cifs_server:
         state: present
         cifs_server_name: "{{ item.cifs_server_name}}"
@@ -387,8 +409,24 @@
         https: "{{ https_global }}"
         validate_certs: "{{ validate_certs_global }}"
       with_items:
-        "{{ cifs}}"
-      when: cifs != None
+        "{{ cifsad }}"
+      when: cifsad != None
+     
+    - name: Create CIFS server - Workgroup
+      na_ontap_cifs_server:
+        state: present
+        cifs_server_name: "{{ item.cifs_server_name}}"
+        vserver: "{{ item.vserver }}"
+        workgroup: "{{ item.workgroup }}"
+        service_state: started
+        hostname: "{{ hostname }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        https: "{{ https_global }}"
+        validate_certs: "{{ validate_certs_global }}"
+      with_items:
+        "{{ cifsworkgroup }}"
+      when: cifsworkgroup != None   
       
     - name: Create and Configure NFS server
       na_ontap_nfs:
