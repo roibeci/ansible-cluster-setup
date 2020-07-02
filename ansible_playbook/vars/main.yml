@@ -13,14 +13,16 @@ hosts:
     aggregate: 
        name: "n1_data"
        diskcount: "7"
+       raidsize: "28"
   node2: 
     name: "Bucicluster-02"
     ip: "x.x.x.102"
     aggregate: 
        name: "n2_data"
-       diskcount: "5"    
+       diskcount: "5"
+       raidsize: "28"
     
-license_codes: 
+licenses: 
   - XXXXXXXXXXXXXXXXXXXXXXXXXXXX #Enter licene code for protocol in here   
   - XXXXXXXXXXXXXXXXXXXXXXXXXXXX 
 
@@ -38,12 +40,21 @@ snmp:
   - { community_name: ansible_snmp, access_control: ro }
 
 ports:
+  - { node: "{{hosts['node1'].name }}", port: e0c, mtu: 9000 , flowcontrol: none, autonegotiate: true}
   - { node: "{{hosts['node1'].name }}", port: e0d, mtu: 9000 , flowcontrol: none, autonegotiate: true}
+  - { node: "{{hosts['node1'].name }}", port: e0e, mtu: 1500 , flowcontrol: none, autonegotiate: true}
+  - { node: "{{hosts['node1'].name }}", port: e0f, mtu: 1500 , flowcontrol: none, autonegotiate: true}
+  - { node: "{{hosts['node2'].name }}", port: e0c, mtu: 9000 , flowcontrol: none, autonegotiate: true}
   - { node: "{{hosts['node2'].name }}", port: e0d, mtu: 9000 , flowcontrol: none, autonegotiate: true}
-
+  - { node: "{{hosts['node2'].name }}", port: e0e, mtu: 1500 , flowcontrol: none, autonegotiate: true}
+  - { node: "{{hosts['node2'].name }}", port: e0f, mtu: 1500 , flowcontrol: none, autonegotiate: true}
+  
 ifgrps:
-  - { name: a0a, node: "{{hosts['node1'].name }}", ports: "e0d", mode: multimode, mtu: 9000, distribution_function: ip }
-  - { name: a0a, node: "{{hosts['node2'].name }}", ports: "e0d", mode: multimode, mtu: 9000, distribution_function: ip }
+  - { name: a0a, node: "{{hosts['node1'].name }}", ports: "e0c,e0e", mode: multimode_lacp, mtu: 9000, distribution_function: ip }
+  - { name: a0a, node: "{{hosts['node2'].name }}", ports: "e0c,e0e", mode: multimode_lacp, mtu: 9000, distribution_function: ip }
+  - { name: a0b, node: "{{hosts['node1'].name }}", ports: "e0d,e0f", mode: multimode_lacp, mtu: 1500, distribution_function: ip }
+  - { name: a0b, node: "{{hosts['node2'].name }}", ports: "e0d,e0f", mode: multimode_lacp, mtu: 1500, distribution_function: ip }
+
 
 vlans:
   - { vlanid: 300, node: "{{hosts['node1'].name }}", phy_interface: "a0a" }
