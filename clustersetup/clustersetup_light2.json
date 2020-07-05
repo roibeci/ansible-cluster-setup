@@ -4,7 +4,7 @@
 			"cluster-name": "BuciCluster",
 			"ip": "x.x.x.100",
 			"user": "admin",
-			"password": "netapp123",
+			"password": "password",
 			"timezone": "Asia/Jerusalem",
 			"contact": "your@email.com",
 			"location": "RACK NUMBER",
@@ -30,7 +30,7 @@
 				{
 					"node-name": "BuciClustern1",
 					"user": "admin",
-					"password": "netapp123",
+					"password": "password",
 					"ip": "x.x.x.101",
 					"sp-ip": "y.y.y.101"
 				},
@@ -38,7 +38,7 @@
 				{
 					"node-name": "BuciClustern2",
 					"user": "admin",
-					"password": "netapp123",
+					"password": "password",
 					"ip": "x.x.x.102",
 					"sp-ip": "y.y.y.102"
 				}
