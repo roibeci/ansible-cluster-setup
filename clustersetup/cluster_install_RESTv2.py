@@ -82,45 +82,45 @@ def handle_job(s, response):
 
 
 def cluster_setup(cluster):
-    print("> " + cluster["cluster-name"] + ": Creating Cluster ")
+    	print("> " + cluster["cluster-name"] + ": Creating Cluster ")
 
-    for node in cluster["cluster-nodes"]:
+    #for node in cluster["cluster-nodes"]:
 
-        print("---> " + node["node-name"] + ": Working on node ")
-        # Building Session - REST
+        print("---> " + cluster["node01"]["node-name"] + ": Working on node ")
+        # Building Session Node01 - REST
         s = requests.Session()
-        s.url = "https://{}".format(node["ip"])
+        s.url = "https://{}".format(cluster["node01"]["ip"])
         s.verify = False
-        s.auth = (node["user"], node["password"])
+        s.auth = (cluster["node01"]["user"], cluster["node01"]["password"])
         s.headers = {
             "Content-Type": "application/hal+json",
             "Accept": "application/hal+json"
         }
 
-        # Building Session - ZAPI
-        session = NaServer(node["ip"], 1, 140)
+        # Building Session for Node01- ZAPI
+        session = NaServer(cluster["node01"]["ip"], 1, 140)
         session.set_server_type("Filer")
-        session.set_admin_user(node["user"], node["password"])
+        session.set_admin_user(cluster["node01"]["user"], cluster["node01"]["password"])
         session.set_transport_type("HTTPS")
 
         # STEP: Create cluster
-        if ("-01" in node["node-name"]):
-            print("---> " + node["node-name"] + ": Creating cluster...")
+        #if ("-01" in node["node-name"]):
+        print("---> " + cluster["node01"]["node-name"] + ": Creating cluster...")
 
-            # create cluster API
-            api = "/api/cluster"
+        # create cluster API
+        api = "/api/cluster"
 
-            # creating body
-            body = {
+        # creating body
+        body = {
                 "contact": cluster["contact"],
                 "location": cluster["location"],
                 "name": cluster["cluster-name"],
                 "password": cluster["password"],
                 "management_interface": {}
-            }
-            # add cluster mgmt
-            for lif in cluster["net-interfaces"]:
-                if (lif["role"] == "cluster-mgmt"):
+        }
+        # add cluster mgmt
+        for lif in cluster["net-interfaces"]:
+        	if (lif["role"] == "cluster-mgmt"):
                     body["management_interface"]["ip"] = {
                         "address": lif["address"],
                         "netmask": lif["netmask"]
@@ -134,78 +134,75 @@ def cluster_setup(cluster):
                     break
                 else:
                     continue
-            # add ntp server
-            # if (cluster.get("ntp-servers")):
-            #        for ntp_server in cluster["ntp-servers"]:
-            #                body["ntp_servers"].append(ntp_server["server-name"])
-            # add licenses
-            # for ontap_license in cluster["licenses"]:
-            #       body["licenses"].append(cluster["licenses"][ontap_license])
 
-            response = s.post(url=s.url + api, data=json.dumps(body))
-            print("URL==" + s.url + api)  # debug
-            print("BODY==" + json.dumps(body))  # debug
-            if response:
-                print(response.json())
-            else:
-                print("NO RESPONSE FROM NODE " + body["management_interface"]["ip"] + ". Exiting..")
+        response = s.post(url=s.url + api, data=json.dumps(body))
+        print("URL==" + s.url + api)  # debug
+        print("BODY==" + json.dumps(body))  # debug
+        if response:
+        	print(response.json())
+        else:
+                print("NO RESPONSE FROM NODE01 ")
                 sys.exit()
-            status = handle_job(s, response)
-            if (status == "success"):
-                print("---> " + node["node-name"] + ": SUCCESS")
-            else:
-                print("---> " + node["node-name"] + ": " + status)
+        status = handle_job(s, response)
+        if (status == "success"):
+                print("---> " + cluster["node01"]["node-name"] + ": SUCCESS")
+        else:
+                print("---> " + cluster["node01"]["node-name"] + ": " + status)
                 sys.exit()
 
         # STEP: Reading cluster LIF IP for joining additional nodes later
-        if ("-01" in node["node-name"]):
-            print("--- " + node["node-name"] + ": Reading cluster LIF IP for joining further nodes later...")
-            api = NaElement("net-interface-modify")
-            for lif in cluster["net-interfaces"]:
+        print("--- " + cluster["node01"]["node-name"] + ": Reading cluster LIF IP for joining further nodes later...")
+        api = NaElement("net-interface-modify")
+        for lif in cluster["net-interfaces"]:
                 if (lif["role"] == "cluster-mgmt"):
                     api.child_add_string("home-port", lif["home-port"])
                     api.child_add_string("interface-name", "cluster_mgmt")
                     api.child_add_string("vserver", cluster["cluster-name"])
                 else:
                     continue
-            xo = session.invoke_elem(api)
-            if (xo.results_status() == "failed"):
-                print("Error:\n")
+        xo = session.invoke_elem(api)
+        if (xo.results_status() == "failed"):
+        	print("Error:\n")
                 print(xo.sprintf())
                 sys.exit(1)
-            print("Received:\n")
-            print(xo.sprintf())
-            api1 = NaElement("net-interface-revert")
-            api1.child_add_string("interface-name", "cluster_mgmt")
-            api1.child_add_string("vserver", cluster["cluster-name"])
-            xo1 = session.invoke_elem(api1)
-            if (xo1.results_status() == "failed"):
-                print("Error:\n")
+        print("Received:\n")
+        print(xo.sprintf())
+        api1 = NaElement("net-interface-revert")
+        api1.child_add_string("interface-name", "cluster_mgmt")
+        api1.child_add_string("vserver", cluster["cluster-name"])
+        xo1 = session.invoke_elem(api1)
+        if (xo1.results_status() == "failed"):
+        	print("Error:\n")
                 print(xo1.sprintf())
                 sys.exit(1)
-            print("Received:\n")
-            print(xo1.sprintf())
-            api = "/api/network/ip/interfaces"
-            url_params = "?fields=services,ip.address&services=cluster_core&max_records=1"
-            response = s.get(url=s.url + api + url_params)
-            status = handle_job(s, response)
-            if (status == "success"):
+        print("Received:\n")
+        print(xo1.sprintf())
+        api = "/api/network/ip/interfaces"
+        url_params = "?fields=services,ip.address&services=cluster_core&max_records=1"
+        response = s.get(url=s.url + api + url_params)
+        status = handle_job(s, response)
+        if (status == "success"):
                 clus_lif_ip = response.json()["records"][0]["ip"]["address"]
-                print("---> " + node["node-name"] + ": SUCCESS")
-            else:
-                print("---> " + node["node-name"] + ": " + status)
+                print("---> " + cluster["node01"]["node-name"] + ": SUCCESS")
+        else:
+                print("---> " + cluster["node01"]["node-name"] + ": " + status)
                 sys.exit(1)
 
         # STEP: Join nodes to cluster
-        if (not "-01" in node["node-name"]):
-            print("--- " + node["node-name"] + ": Joining node to cluster...")
-            zapi_post = NaElement("cluster-join")
-            zapi_post.child_add_string("cluster-ip-address", clus_lif_ip)
-            zapi_post_return = session.invoke_elem(zapi_post)
-            if (zapi_post_return.results_status() == "failed"):
-                print("---> " + node["node-name"] + ": " + zapi_post_return.sprintf().strip())
+	# Building Session for Node02 - ZAPI
+        session = NaServer(cluster["node02"]["ip"], 1, 140)
+        session.set_server_type("Filer")
+        session.set_admin_user(cluster["node02"]["user"], cluster["node02"]["password"])
+        session.set_transport_type("HTTPS")
+
+        print("--- " + cluster["node02"]["node-name"] + ": Joining node to cluster...")
+        zapi_post = NaElement("cluster-join")
+        zapi_post.child_add_string("cluster-ip-address", clus_lif_ip)
+        zapi_post_return = session.invoke_elem(zapi_post)
+        if (zapi_post_return.results_status() == "failed"):
+                print("---> " + cluster["node02"]["node-name"] + ": " + zapi_post_return.sprintf().strip())
                 sys.exit(1)
-            else:
+        else:
                 zapi_get = NaElement("cluster-create-join-progress-get")
                 is_complete = ""
                 join_iterator = 1
@@ -219,10 +216,10 @@ def cluster_setup(cluster):
                         "cluster-create-join-progress-info").child_get_string("status")
                     join_iterator = join_iterator + 1
                 if (is_complete == "true") and (action_status == "success"):
-                    print("---> " + node["node-name"] + ": SUCCESS")
+                    print("---> " + cluster["node02"]["node-name"] + ": SUCCESS")
                 else:
-                    print("---> " + node["node-name"] + ": " + zapi_get.sprintf().strip())
-                    print("---> " + node["node-name"] + ": " + zapi_get_return.sprintf().strip())
+                    print("---> " + cluster["node02"]["node-name"] + ": " + zapi_get.sprintf().strip())
+                    print("---> " + cluster["node02"]["node-name"] + ": " + zapi_get_return.sprintf().strip())
                     sys.exit(1)
 
 
