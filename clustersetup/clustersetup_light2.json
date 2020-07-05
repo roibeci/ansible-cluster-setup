@@ -2,9 +2,9 @@
 	"clusters": [
 		{
 			"cluster-name": "BuciCluster",
-			"ip": "x.x.x.100",
+			"ip": "10.68.65.242",
 			"user": "admin",
-			"password": "enter_password_here",
+			"password": "netapp123",
 			"timezone": "Asia/Jerusalem",
 			"contact": "your@email.com",
 			"location": "RACK NUMBER",
@@ -14,34 +14,34 @@
 				{
 					"interface-name": "cluster_mgmt",
 					"role": "cluster-mgmt",
-					"home-node": "BuciCluster-01",
+					"home-node": "BuciClustern1",
 					"home-port": "e0M",
-					"address": "x.x.x.100",
+					"address": "10.68.65.242",
 					"netmask": "255.255.255.0"
 				}
 				],
 			"net-routes": [
 				{
 					"destination": "0.0.0.0/0",
-					"gateway": "x.x.x.1"
+					"gateway": "10.68.65.1"
 				}
 			],
-			"cluster-nodes": [
+			"node01": 
 				{
-					"node-name": "BuciCluster-01",
+					"node-name": "BuciClustern1",
 					"user": "admin",
-					"password": "enter_password_here",
-					"ip": "x.x.x.101",
-					"sp-ip": "x.x.x.201"
+					"password": "netapp123",
+					"ip": "10.68.65.243",
+					"sp-ip": "10.68.65.240"
 				},
+			"node02": 
 				{
-					"node-name": "BuciCluster-02",
+					"node-name": "BuciClustern2",
 					"user": "admin",
-					"password": "enter_password_here",
-					"ip": "x.x.x.102",
-					"sp-ip": "x.x.x.202"
+					"password": "netapp123",
+					"ip": "10.68.65.244",
+					"sp-ip": "10.68.65.240"
 				}
-				]
 		}
 	]
 }
