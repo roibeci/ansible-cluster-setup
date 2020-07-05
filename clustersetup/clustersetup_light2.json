@@ -2,7 +2,7 @@
 	"clusters": [
 		{
 			"cluster-name": "BuciCluster",
-			"ip": "10.68.65.242",
+			"ip": "x.x.x.100",
 			"user": "admin",
 			"password": "netapp123",
 			"timezone": "Asia/Jerusalem",
@@ -16,14 +16,14 @@
 					"role": "cluster-mgmt",
 					"home-node": "BuciClustern1",
 					"home-port": "e0M",
-					"address": "10.68.65.242",
+					"address": "x.x.x.100",
 					"netmask": "255.255.255.0"
 				}
 				],
 			"net-routes": [
 				{
 					"destination": "0.0.0.0/0",
-					"gateway": "10.68.65.1"
+					"gateway": "x.x.x.1"
 				}
 			],
 			"node01": 
@@ -31,16 +31,16 @@
 					"node-name": "BuciClustern1",
 					"user": "admin",
 					"password": "netapp123",
-					"ip": "10.68.65.243",
-					"sp-ip": "10.68.65.240"
+					"ip": "x.x.x.101",
+					"sp-ip": "y.y.y.101"
 				},
 			"node02": 
 				{
 					"node-name": "BuciClustern2",
 					"user": "admin",
 					"password": "netapp123",
-					"ip": "10.68.65.244",
-					"sp-ip": "10.68.65.240"
+					"ip": "x.x.x.102",
+					"sp-ip": "y.y.y.102"
 				}
 		}
 	]
