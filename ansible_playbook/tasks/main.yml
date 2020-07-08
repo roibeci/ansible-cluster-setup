@@ -115,6 +115,26 @@
         command: ['set d -c off;  disk option modify -node ',"{{ hosts['node1'].name }}",' -autoassign on;disk option modify -node ',"{{ hosts['node2'].name }}",' -autoassign on; disk zerospares']
         validate_certs: "{{ validate_certs_global }}"
         https: "{{ https_global }}"        
+
+    - name: Modify Service Processor Network
+      na_ontap_service_processor_network:
+        hostname: "{{ hostname }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        node: "{{ item.node }}"
+        dhcp: none
+        is_enabled: true
+        address_type: ipv4
+        state: present
+        ip_address: "{{ item.ip_address }}"
+        gateway_ip_address: "{{ item.gateway }}"
+        netmask: "{{ item.netmask }}"
+        validate_certs: "{{ validate_certs_global }}"
+        https: "{{ https_global }}"
+      with_items:
+        "{{ sp }}"
+      when: sp != None
+      
  
 # Create aggregate_name
     - name: Create Aggregates
@@ -130,6 +150,15 @@
         password: "{{ password }}"
         https: "{{ https_global }}"
         validate_certs: "{{ validate_certs_global }}"
+
+    - name: Set Battery Override init
+      na_ontap_command:
+        hostname: "{{ hostname }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        command: ['set d -c off ; systemshell -node ',"{{ hosts['node1'].name }}",' -command sudo kenv -p bootarg.init.battery_override=true ; systemshell -node ',"{{ hosts['node2'].name }}",' -command sudo kenv -p bootarg.init.battery_override=true']
+        validate_certs: "{{ validate_certs_global }}"
+        https: "{{ https_global }}"
 
     - name: Set NTP Server
       ignore_errors: yes
