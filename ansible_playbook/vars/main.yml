@@ -104,3 +104,7 @@ volumes:
   - { name: vol3, aggr: "{{ hosts['node1'].aggregate.name }}", size: 10, policy: EP2, snappercent: 3, vserver: SVM_David, securitystyle: unix  }
   - { name: vol4, aggr: "{{ hosts['node1'].aggregate.name }}", size: 10, policy: EP1, snappercent: 3, vserver: SVM_David, securitystyle: unix  }
 
+sp:
+  - { node: "{{ hosts['node1'].name }}", dhcp: none, ip_enabled: true, address_type: ipv4, state: present, ip_address: x.x.x.x, netmask: 255.255.255.0, gateway: x.x.x.x }
+  - { node: "{{ hosts['node2'].name }}", dhcp: none, ip_enabled: true, address_type: ipv4, state: present, ip_address: x.x.x.x, netmask: 255.255.255.0, gateway: x.x.x.x }
+
