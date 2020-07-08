@@ -82,145 +82,145 @@ def handle_job(s, response):
 
 
 def cluster_setup(cluster):
-    	print("> " + cluster["cluster-name"] + ": Creating Cluster ")
+    print("> " + cluster["cluster-name"] + ": Creating Cluster ")
 
-    #for node in cluster["cluster-nodes"]:
+    # for node in cluster["cluster-nodes"]:
 
-        print("---> " + cluster["node01"]["node-name"] + ": Working on node ")
-        # Building Session Node01 - REST
-        s = requests.Session()
-        s.url = "https://{}".format(cluster["node01"]["ip"])
-        s.verify = False
-        s.auth = (cluster["node01"]["user"], cluster["node01"]["password"])
-        s.headers = {
-            "Content-Type": "application/hal+json",
-            "Accept": "application/hal+json"
-        }
+    print("---> " + cluster["node01"]["node-name"] + ": Working on node ")
+    # Building Session Node01 - REST
+    s = requests.Session()
+    s.url = "https://{}".format(cluster["node01"]["ip"])
+    s.verify = False
+    s.auth = (cluster["node01"]["user"], cluster["node01"]["password"])
+    s.headers = {
+        "Content-Type": "application/hal+json",
+        "Accept": "application/hal+json"
+    }
 
-        # Building Session for Node01- ZAPI
-        session = NaServer(cluster["node01"]["ip"], 1, 140)
-        session.set_server_type("Filer")
-        session.set_admin_user(cluster["node01"]["user"], cluster["node01"]["password"])
-        session.set_transport_type("HTTPS")
+    # Building Session for Node01- ZAPI
+    session = NaServer(cluster["node01"]["ip"], 1, 140)
+    session.set_server_type("Filer")
+    session.set_admin_user(cluster["node01"]["user"], cluster["node01"]["password"])
+    session.set_transport_type("HTTPS")
 
-        # STEP: Create cluster
-        #if ("-01" in node["node-name"]):
-        print("---> " + cluster["node01"]["node-name"] + ": Creating cluster...")
+    # STEP: Create cluster
+    # if ("-01" in node["node-name"]):
+    print("---> " + cluster["node01"]["node-name"] + ": Creating cluster...")
 
-        # create cluster API
-        api = "/api/cluster"
+    # create cluster API
+    api = "/api/cluster"
 
-        # creating body
-        body = {
-                "contact": cluster["contact"],
-                "location": cluster["location"],
-                "name": cluster["cluster-name"],
-                "password": cluster["password"],
-                "management_interface": {}
-        }
-        # add cluster mgmt
-        for lif in cluster["net-interfaces"]:
-        	if (lif["role"] == "cluster-mgmt"):
-                    body["management_interface"]["ip"] = {
-                        "address": lif["address"],
-                        "netmask": lif["netmask"]
-                    }
-                    for route in cluster["net-routes"]:
-                        if (route["destination"] == "0.0.0.0/0"):
-                            body["management_interface"]["ip"]["gateway"] = route["gateway"]
-                            break
-                        else:
-                            continue
+    # creating body
+    body = {
+        "contact": cluster["contact"],
+        "location": cluster["location"],
+        "name": cluster["cluster-name"],
+        "password": cluster["password"],
+        "management_interface": {}
+    }
+    # add cluster mgmt
+    for lif in cluster["net-interfaces"]:
+        if (lif["role"] == "cluster-mgmt"):
+            body["management_interface"]["ip"] = {
+                "address": lif["address"],
+                "netmask": lif["netmask"]
+            }
+            for route in cluster["net-routes"]:
+                if (route["destination"] == "0.0.0.0/0"):
+                    body["management_interface"]["ip"]["gateway"] = route["gateway"]
                     break
                 else:
                     continue
-
-        response = s.post(url=s.url + api, data=json.dumps(body))
-        print("URL==" + s.url + api)  # debug
-        print("BODY==" + json.dumps(body))  # debug
-        if response:
-        	print(response.json())
+            break
         else:
-                print("NO RESPONSE FROM NODE01 ")
-                sys.exit()
-        status = handle_job(s, response)
-        if (status == "success"):
-                print("---> " + cluster["node01"]["node-name"] + ": SUCCESS")
-        else:
-                print("---> " + cluster["node01"]["node-name"] + ": " + status)
-                sys.exit()
+            continue
 
-        # STEP: Reading cluster LIF IP for joining additional nodes later
-        print("--- " + cluster["node01"]["node-name"] + ": Reading cluster LIF IP for joining further nodes later...")
-        api = NaElement("net-interface-modify")
-        for lif in cluster["net-interfaces"]:
-                if (lif["role"] == "cluster-mgmt"):
-                    api.child_add_string("home-port", lif["home-port"])
-                    api.child_add_string("interface-name", "cluster_mgmt")
-                    api.child_add_string("vserver", cluster["cluster-name"])
-                else:
-                    continue
-        xo = session.invoke_elem(api)
-        if (xo.results_status() == "failed"):
-        	print("Error:\n")
-                print(xo.sprintf())
-                sys.exit(1)
-        print("Received:\n")
+    response = s.post(url=s.url + api, data=json.dumps(body))
+    print("URL==" + s.url + api)  # debug
+    print("BODY==" + json.dumps(body))  # debug
+    if response:
+        print(response.json())
+    else:
+        print("NO RESPONSE FROM NODE01 ")
+        sys.exit()
+    status = handle_job(s, response)
+    if (status == "success"):
+        print("---> " + cluster["node01"]["node-name"] + ": SUCCESS")
+    else:
+        print("---> " + cluster["node01"]["node-name"] + ": " + status)
+        sys.exit()
+
+    # STEP: Reading cluster LIF IP for joining additional nodes later
+    print("--- " + cluster["node01"]["node-name"] + ": Reading cluster LIF IP for joining further nodes later...")
+    api = NaElement("net-interface-modify")
+    for lif in cluster["net-interfaces"]:
+        if (lif["role"] == "cluster-mgmt"):
+            api.child_add_string("home-port", lif["home-port"])
+            api.child_add_string("interface-name", "cluster_mgmt")
+            api.child_add_string("vserver", cluster["cluster-name"])
+        else:
+            continue
+    xo = session.invoke_elem(api)
+    if (xo.results_status() == "failed"):
+        print("Error:\n")
         print(xo.sprintf())
-        api1 = NaElement("net-interface-revert")
-        api1.child_add_string("interface-name", "cluster_mgmt")
-        api1.child_add_string("vserver", cluster["cluster-name"])
-        xo1 = session.invoke_elem(api1)
-        if (xo1.results_status() == "failed"):
-        	print("Error:\n")
-                print(xo1.sprintf())
-                sys.exit(1)
-        print("Received:\n")
+        sys.exit(1)
+    print("Received:\n")
+    print(xo.sprintf())
+    api1 = NaElement("net-interface-revert")
+    api1.child_add_string("interface-name", "cluster_mgmt")
+    api1.child_add_string("vserver", cluster["cluster-name"])
+    xo1 = session.invoke_elem(api1)
+    if (xo1.results_status() == "failed"):
+        print("Error:\n")
         print(xo1.sprintf())
-        api = "/api/network/ip/interfaces"
-        url_params = "?fields=services,ip.address&services=cluster_core&max_records=1"
-        response = s.get(url=s.url + api + url_params)
-        status = handle_job(s, response)
-        if (status == "success"):
-                clus_lif_ip = response.json()["records"][0]["ip"]["address"]
-                print("---> " + cluster["node01"]["node-name"] + ": SUCCESS")
-        else:
-                print("---> " + cluster["node01"]["node-name"] + ": " + status)
-                sys.exit(1)
+        sys.exit(1)
+    print("Received:\n")
+    print(xo1.sprintf())
+    api = "/api/network/ip/interfaces"
+    url_params = "?fields=services,ip.address&services=cluster_core&max_records=1"
+    response = s.get(url=s.url + api + url_params)
+    status = handle_job(s, response)
+    if (status == "success"):
+        clus_lif_ip = response.json()["records"][0]["ip"]["address"]
+        print("---> " + cluster["node01"]["node-name"] + ": SUCCESS")
+    else:
+        print("---> " + cluster["node01"]["node-name"] + ": " + status)
+        sys.exit(1)
 
-        # STEP: Join nodes to cluster
-	# Building Session for Node02 - ZAPI
-        session = NaServer(cluster["node02"]["ip"], 1, 140)
-        session.set_server_type("Filer")
-        session.set_admin_user(cluster["node02"]["user"], cluster["node02"]["password"])
-        session.set_transport_type("HTTPS")
+    # STEP: Join nodes to cluster
+    # Building Session for Node02 - ZAPI
+    session = NaServer(cluster["node02"]["ip"], 1, 140)
+    session.set_server_type("Filer")
+    session.set_admin_user(cluster["node02"]["user"], cluster["node02"]["password"])
+    session.set_transport_type("HTTPS")
 
-        print("--- " + cluster["node02"]["node-name"] + ": Joining node to cluster...")
-        zapi_post = NaElement("cluster-join")
-        zapi_post.child_add_string("cluster-ip-address", clus_lif_ip)
-        zapi_post_return = session.invoke_elem(zapi_post)
-        if (zapi_post_return.results_status() == "failed"):
-                print("---> " + cluster["node02"]["node-name"] + ": " + zapi_post_return.sprintf().strip())
-                sys.exit(1)
+    print("--- " + cluster["node02"]["node-name"] + ": Joining node to cluster...")
+    zapi_post = NaElement("cluster-join")
+    zapi_post.child_add_string("cluster-ip-address", clus_lif_ip)
+    zapi_post_return = session.invoke_elem(zapi_post)
+    if (zapi_post_return.results_status() == "failed"):
+        print("---> " + cluster["node02"]["node-name"] + ": " + zapi_post_return.sprintf().strip())
+        sys.exit(1)
+    else:
+        zapi_get = NaElement("cluster-create-join-progress-get")
+        is_complete = ""
+        join_iterator = 1
+        while is_complete != "true" and \
+                join_iterator < 13:
+            time.sleep(10)
+            zapi_get_return = session.invoke_elem(zapi_get)
+            is_complete = zapi_get_return.child_get("attributes").child_get(
+                "cluster-create-join-progress-info").child_get_string("is-complete")
+            action_status = zapi_get_return.child_get("attributes").child_get(
+                "cluster-create-join-progress-info").child_get_string("status")
+            join_iterator = join_iterator + 1
+        if (is_complete == "true") and (action_status == "success"):
+            print("---> " + cluster["node02"]["node-name"] + ": SUCCESS")
         else:
-                zapi_get = NaElement("cluster-create-join-progress-get")
-                is_complete = ""
-                join_iterator = 1
-                while is_complete != "true" and \
-                        join_iterator < 13:
-                    time.sleep(10)
-                    zapi_get_return = session.invoke_elem(zapi_get)
-                    is_complete = zapi_get_return.child_get("attributes").child_get(
-                        "cluster-create-join-progress-info").child_get_string("is-complete")
-                    action_status = zapi_get_return.child_get("attributes").child_get(
-                        "cluster-create-join-progress-info").child_get_string("status")
-                    join_iterator = join_iterator + 1
-                if (is_complete == "true") and (action_status == "success"):
-                    print("---> " + cluster["node02"]["node-name"] + ": SUCCESS")
-                else:
-                    print("---> " + cluster["node02"]["node-name"] + ": " + zapi_get.sprintf().strip())
-                    print("---> " + cluster["node02"]["node-name"] + ": " + zapi_get_return.sprintf().strip())
-                    sys.exit(1)
+            print("---> " + cluster["node02"]["node-name"] + ": " + zapi_get.sprintf().strip())
+            print("---> " + cluster["node02"]["node-name"] + ": " + zapi_get_return.sprintf().strip())
+            sys.exit(1)
 
 
 # Start threads (install cluster by cluster)
@@ -239,6 +239,7 @@ for x in setup_threads:
 print("Cluster Setup Finished succesfully !! Let's Run Ansible playbook..")
 
 os.system('rm -rf nohup.out')
-#os.system('../ansible_playbook/ansible-playbook-command.sh')
-os.system('nohup ansible-playbook ../ansible_playbook/tasks/main.yml  --extra-vars=@../ansible_playbook/vars/main.yml -v &')
+# os.system('../ansible_playbook/ansible-playbook-command.sh')
+os.system(
+    'nohup ansible-playbook ../ansible_playbook/tasks/main.yml  --extra-vars=@../ansible_playbook/vars/main.yml -v &')
 # os.system('tail -f nohup.out')
