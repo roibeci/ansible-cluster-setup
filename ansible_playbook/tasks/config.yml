@@ -1,0 +1,352 @@
+---
+- hosts: localhost
+  gather_facts: false
+  collections:
+    - netapp.ontap
+  vars_files: "{{ file }}"
+  vars:
+    login: &login
+      hostname: "{{ hostname }}"
+      username: "{{ username }}"
+      password: "{{ password }}"
+      https: true
+      validate_certs: false
+  name: "Build Configurations: {{ cluster }}"
+
+  tasks:
+    - name: Set Cluster HA
+      na_ontap_command:
+        command: ['set d -c off ; cluster ha modify -configured true']
+        <<: *login
+
+    - name: Set Login Message
+      na_ontap_command:
+        command: ['security login banner modify -vserver ', "{{ cluster }}", ' -message ', "{{ motd }}"]
+        <<: *login
+      when: motd != None
+
+    ##### DEPRECATED #####
+    #- name: Get NetApp info (Password Authentication)
+    #  na_ontap_gather_facts:
+    #    state: info
+    #    hostname: "{{ hostname }}"
+    #    username: "{{ username }}"
+    #    password: "{{ password }}"
+    #    https: "{{ https_global }}"
+    #    validate_certs: "{{ validate_certs_global }}"
+
+    - name: Add licenses
+      na_ontap_license:
+        state: present
+        license_codes: "{{ licenses |list }}"
+        <<: *login
+
+    - name: Clean Unused licenses
+      na_ontap_command:
+        command: ['set', 'd', '-c', 'off', ';', 'license', 'clean-up', '-unused', 'true']
+        <<: *login
+
+    - name: Remove Disk Partition Ownership from Node02 #Fixed
+      na_ontap_command:
+        command: ['set d -c off;  disk option modify -node ',"{{ hosts['node1'].name }}",' -autoassign off;disk option modify -node ',"{{ hosts['node2'].name }}",' -autoassign off;disk partition removeowner { -partition-index 1 -owner-node-name ',"{{ hosts['node2'].name }}" , ' -container-type spare }']
+        <<: *login
+
+    - name: Assign Disk Partition Ownership to Node01 # Fixed
+      na_ontap_command:
+        command: ['set d -c off ;disk partition assign {-container-type unassigned } -owner ', "{{ hosts['node1'].name }}"]
+        #command: ['set', 'd', '-c', 'off', ';', 'disk', 'assign', '-all', 'true', '-node', "{{ hosts['node1'].name }}"]
+        <<: *login
+
+    - name: Zero Spares and Enable Auto-Assign #Fixed !
+      na_ontap_command:
+        #command: ['set', 'd', '-c', 'off', ';', 'disk', 'zerospares', '-use-physical-zeroing', 'false', ';', 'disk', 'option', 'modify', '-node', '*', '-autoassign', 'on']
+        command: ['set', 'd', '-c', 'off', ';', 'disk', 'zerospares']
+        command: ['set d -c off;  disk option modify -node ',"{{ hosts['node1'].name }}",' -autoassign on;disk option modify -node ',"{{ hosts['node2'].name }}",' -autoassign on; disk zerospares']
+        <<: *login
+
+    - name: Modify Service Processor Network
+      na_ontap_service_processor_network:
+        node: "{{ item.node }}"
+        dhcp: none
+        is_enabled: true
+        address_type: ipv4
+        state: present
+        ip_address: "{{ item.ip_address }}"
+        gateway_ip_address: "{{ item.gateway }}"
+        netmask: "{{ item.netmask }}"
+        <<: *login
+      with_items:
+        "{{ sp }}"
+      when: sp != None
+
+
+# Create aggregate_name
+    - name: Create Aggregates
+      na_ontap_aggregate:
+        state: present
+        service_state: online
+        name: "{{ hosts['node1'].aggregate.name }}"
+        disk_count: "{{ hosts['node1'].aggregate.diskcount }}"
+        raid_size: "{{ hosts['node1'].aggregate.raidsize }}"
+        nodes: "{{ hosts['node1'].name }}"
+        <<: *login
+
+    - name: Set Battery Override init
+      na_ontap_command:
+        command: ['set d -c off ; systemshell -node ',"{{ hosts['node1'].name }}",' -command sudo kenv -p bootarg.init.battery_override=true ; systemshell -node ',"{{ hosts['node2'].name }}",' -command sudo kenv -p bootarg.init.battery_override=true']
+        <<: *login
+
+    - name: Set NTP Server
+      ignore_errors: yes
+      na_ontap_ntp:
+        state: present
+        server_name: "{{ item.server_name }}"
+        version: "{{ item.version }}"
+        #ontapi: "{{ ontap_facts.ontap_version }}"
+        <<: *login
+      with_items:
+        "{{ ntp }}"
+      when: ntp != None
+
+    - name: Create SNMP community
+      na_ontap_snmp:
+        community_name: "{{ item.community_name }}"
+        access_control: "{{ item.access_control }}"
+        #ontapi: "{{ ontap_facts.ontap_version }}"
+        <<: *login
+      with_items:
+        "{{ snmp }}"
+      when: snmp != None
+
+    - name: Remove Ports from Default Broadcast Domain
+      na_ontap_broadcast_domain_ports:
+        state: absent
+        broadcast_domain: "Default"
+        ports: "{{ item.node }}:{{ item.port }}"
+        <<: *login
+      with_items:
+        "{{ ports }}"
+      when: ports != None
+
+    - name: Modify Net Port
+      ignore_errors: yes
+      na_ontap_net_port:
+        state: present
+        node: "{{ item.node }}"
+        port: "{{ item.port }}"
+        mtu: "{{ item.mtu }}"
+        autonegotiate_admin: "{{ item.autonegotiate }}"
+        flowcontrol_admin: "{{ item.flowcontrol }}"
+        #ontapi: "{{ ontap_facts.ontap_version }}"
+        <<: *login
+      with_items:
+        "{{ ports }}"
+      when: ports != None
+
+    - name: Create ifgrp
+      na_ontap_net_ifgrp:
+        state: present
+        distribution_function: "{{ item.distribution_function }}" #goes to default
+        mode: "{{ item.mode }}" #goes to default
+        name: "{{ item.name }}"
+        ports: "{{ item.ports }}"
+        node: "{{ item.node }}"
+        <<: *login
+      with_items:
+        "{{ ifgrps }}"
+      when: ifgrps != None
+
+    - name: Modify Net Port ifgrp
+      na_ontap_net_port:
+        state: present
+        node: "{{ item.node }}"
+        port: "{{ item.name }}"
+        mtu: "{{ item.mtu }}"
+        #ontapi: "{{ ontap_facts.ontap_version }}"
+        <<: *login
+      with_items:
+        "{{ ifgrps }}"
+      when: ifgrps != None
+
+    - name: Create VLAN
+      na_ontap_net_vlan:
+        state: present
+        vlanid: "{{ item.vlanid }}"
+        node: "{{ item.node }}"
+        parent_interface: "{{ item.phy_interface }}"
+        <<: *login
+      with_items:
+        "{{ vlans }}"
+      when: vlans != None
+
+    - name: create broadcast domain
+      na_ontap_broadcast_domain:
+        state: present
+        broadcast_domain: "{{ item.name }}"
+        mtu: "{{ item.mtu }}"
+        ipspace: "Default"
+        ports: "{{ item.ports }}"
+        #ontapi: "{{ ontap_facts.ontap_version }}"
+        <<: *login
+      with_items:
+        "{{ bcasts }}"
+      when: bcasts != None
+
+    - name: Create Vserver
+      na_ontap_svm:
+        state: present
+        name: "{{ item.name }}"
+        root_volume: "{{ item.name }}_root"
+        root_volume_aggregate: "{{ item.root_volume_aggregate }}"
+        root_volume_security_style: "{{ item.root_volume_security_style}}"
+        aggr_list: "{{ hosts['node1'].aggregate.name }}"
+        <<: *login
+      with_items:
+        "{{ vservers }}"
+      when: vservers != None
+
+    - name: Create interfaces
+      na_ontap_interface:
+        state: present
+        interface_name: "{{ item.name }}"
+        home_port: "{{ item.port }}"
+        home_node: "{{ item.node }}"
+        role: data
+        protocols: cifs,nfs
+        admin_status: up
+        address: "{{ item.address }}"
+        netmask: "{{ item.netmask }}"
+        #force_subnet_association: false
+        vserver: "{{ item.vserver }}"
+        <<: *login
+      with_items:
+        "{{ lifs }}"
+      when: lifs != None
+
+    - name: Create Routes
+      na_ontap_net_routes:
+        state: present
+        vserver: "{{ item.vserver }}"
+        destination: "{{ item.destination }}"
+        gateway: "{{ item.gateway }}"
+        metric: 20
+        <<: *login
+      with_items:
+        "{{ gateway }}"
+      when: gateway != None
+
+    - name: Setup DNS
+      na_ontap_dns:
+        state: present
+        vserver: "{{ item.vserver }}"
+        domains: "{{ item.dns_domains }}"
+        nameservers: "{{ item.dns_nameservers }}"
+        #ontapi: "{{ ontap_facts.ontap_version }}"
+        skip_validation: "true"
+        <<: *login
+      with_items:
+        "{{ dns }}"
+      when: dns != None
+
+    - name: Modify Export Policy Default to 0.0.0.0/0
+      na_ontap_export_policy_rule:
+        state: present
+        allow_suid: true
+        client_match: "0.0.0.0/0"
+        policy_name: "default"
+        protocol: "nfs"
+        ro_rule: "any"
+        rw_rule: "any"
+        super_user_security: "any"
+        vserver: "{{ item.name }}"
+        <<: *login
+      with_items:
+        "{{ vservers }}"
+      when: vservers != None
+
+    - name: Create Export Policy Rules
+      na_ontap_export_policy_rule:
+        state: present
+        allow_suid: true
+        client_match: "{{ item.client_match }}"
+        policy_name: "{{ item.name }}"
+        protocol: "nfs"
+        ro_rule: "any"
+        rw_rule: "any"
+        super_user_security: "any"
+        vserver: "{{ item.vserver }}"
+        <<: *login
+      with_items:
+        "{{ exportrules }}"
+      when: exportrules != None
+
+    - name: Add Volumes
+      na_ontap_volume:
+        state: present
+        name: "{{ item.name }}"
+        junction_path: "/{{ item.name }}"
+        is_infinite: False
+        aggregate_name: "{{ item.aggr }}"
+        size: "{{ item.size }}"
+        size_unit: gb
+        space_guarantee: none
+        policy: "{{ item.policy }}"
+        percent_snapshot_space: "{{ item.snappercent }}"
+        vserver: "{{ item.vserver }}"
+        volume_security_style: "{{ item.securitystyle }}"
+        wait_for_completion: false
+        <<: *login
+      with_items:
+        "{{ volumes }}"
+      when: volumes != None
+
+    - name: Create CIFS server - Active Directory
+      ignore_errors: yes
+      na_ontap_cifs_server:
+        state: present
+        cifs_server_name: "{{ item.cifs_server_name}}"
+        admin_user_name: "{{ item.admin_user }}"
+        admin_password: "{{ item.admin_password }}"
+        vserver: "{{ item.vserver }}"
+        domain: "{{ item.domain }}"
+        <<: *login
+      with_items:
+        "{{ cifsad }}"
+      when: cifsad != None
+
+    - name: Create CIFS server - Workgroup
+      ignore_errors: yes
+      na_ontap_cifs_server:
+        state: present
+        cifs_server_name: "{{ item.cifs_server_name}}"
+        vserver: "{{ item.vserver }}"
+        workgroup: "{{ item.workgroup }}"
+        service_state: started
+        <<: *login
+      with_items:
+        "{{ cifsworkgroup }}"
+      when: cifsworkgroup != None
+
+    - name: Create and Configure NFS server
+      na_ontap_nfs:
+        state: present
+        service_state: started
+        vserver: "{{ item.vserver }}"
+        nfsv3: "{{ item.nfsv3 }}"
+        nfsv4: disabled
+        nfsv41: enabled
+        vstorage_state: "{{ item.vstorage }}"
+        <<: *login
+      with_items:
+        "{{ nfs }}"
+      when: nfs != None
+
+    #- name: ONTAP software update
+    #  na_ontap_software_update:
+    #    state: present
+    #    nodes: "{{ item }}"
+    #    package_url: "{{ url }}"
+    #    package_version: "{{ version_name }}"
+    #    ignore_validation_warning: True
+    #  loop: "{{ ontap_facts.cluster_node_info | list }}"
+
