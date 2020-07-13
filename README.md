@@ -1,7 +1,6 @@
 # ansible-cluster-setup
  Ansible Cluster Setup for OnTap 9.6+
 
-
 Intro & Requirements:
 A 0-day cluster setup and configuration with REST and Ansible.
 The scripts consists of 2 playbooks:
