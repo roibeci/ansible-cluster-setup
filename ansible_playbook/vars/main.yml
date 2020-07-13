@@ -1,37 +1,39 @@
+## Replace all x.x.x.x and y.y.y.y with your IP addresses
+
 base_license: XXXXXXXXXXXXXXXX #Optional since ontap 9.2+
-cluster: Bucicluster
+cluster: BuciCluster
 hostname: "x.x.x.100"
+netmask: "255.255.255.0"
 username: "admin"
-password: "enter_you_admin_password"
+password: "password"
 https_global: "true"
 validate_certs_global: "false"
 
 hosts:
   node1:
-    name: "Bucicluster-01" 
+    name: "Buciclustern1"
     ip: "x.x.x.101"
-    aggregate: 
+    subnet: "255.255.255.0"
+    aggregate:
        name: "n1_data"
-       diskcount: "7"
+       diskcount: "10"
        raidsize: "28"
-  node2: 
-    name: "Bucicluster-02"
+  node2:
+    name: "Buciclustern2"
     ip: "x.x.x.102"
-    aggregate: 
-       name: "n2_data"
-       diskcount: "5"
-       raidsize: "28"
-    
-licenses: 
-  - XXXXXXXXXXXXXXXXXXXXXXXXXXXX #Enter licene code for protocol in here   
-  - XXXXXXXXXXXXXXXXXXXXXXXXXXXX 
+    private_ip: "169.254.114.221" #one of the private cluster ip generated
+    subnet: "255.255.255.0"
+
+licenses:
+  - XXXXXXXXXXXXXXXXXXXXXXXXXXXX #Enter licene code for protocol in here
+  - XXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 motd: "Welcome to XXXXX Storage System. This is a monitored system! "
 
 dns:
-  - { dns_domains: domain.local, dns_nameservers: x.x.x.200, vserver: "{{ cluster }}"}
-  - { dns_domains: domain.local, dns_nameservers: x.x.x.200, vserver: SVM_Beci}
-  - { dns_domains: domain.local, dns_nameservers: x.x.x.200, vserver: SVM_David}
+  - { dns_domains: domain.local, dns_nameservers: y.y.y.y, vserver: "{{ cluster }}"}
+  - { dns_domains: domain.local, dns_nameservers: y.y.y.y, vserver: SVM_Beci}
+  - { dns_domains: domain.local, dns_nameservers: y.y.y.y, vserver: SVM_David}
 
 ntp:
   - { server_name: domain.local, version: auto }
@@ -48,7 +50,7 @@ ports:
   - { node: "{{hosts['node2'].name }}", port: e0d, mtu: 9000 , flowcontrol: none, autonegotiate: true}
   - { node: "{{hosts['node2'].name }}", port: e0e, mtu: 1500 , flowcontrol: none, autonegotiate: true}
   - { node: "{{hosts['node2'].name }}", port: e0f, mtu: 1500 , flowcontrol: none, autonegotiate: true}
-  
+
 ifgrps:
   - { name: a0a, node: "{{hosts['node1'].name }}", ports: "e0c,e0e", mode: multimode_lacp, mtu: 9000, distribution_function: ip }
   - { name: a0a, node: "{{hosts['node2'].name }}", ports: "e0c,e0e", mode: multimode_lacp, mtu: 9000, distribution_function: ip }
@@ -73,13 +75,13 @@ vservers:
   - { name: SVM_David, root_volume_aggregate: "{{ hosts['node1'].aggregate.name }}" , root_volume_security_style: unix }
 
 lifs:
-  - { name: lif1, node: "{{ hosts['node1'].name }}", port: a0a-400, address: 1.1.1.1, netmask: 255.255.255.0, vserver: SVM_Beci }
-  - { name: lif2, node: "{{ hosts['node2'].name }}", port: a0a-300, address: 1.1.2.2, netmask: 255.255.255.0, vserver: SVM_Beci }
-  - { name: lif1, node: "{{ hosts['node2'].name }}", port: a0a-300, address: 1.3.2.2, netmask: 255.255.255.0, vserver: SVM_David }
+  - { name: lif1, node: "{{ hosts['node1'].name }}", port: a0a-400, address: x.x.x.x, netmask: 255.255.255.0, vserver: SVM_Beci }
+  - { name: lif2, node: "{{ hosts['node2'].name }}", port: a0a-300, address: x.x.x.x, netmask: 255.255.255.0, vserver: SVM_Beci }
+  - { name: lif1, node: "{{ hosts['node2'].name }}", port: a0a-300, address: x.x.x.x, netmask: 255.255.255.0, vserver: SVM_David }
 
 gateway: #if a different default route/gateway then the clusters default needs to be added
-  - { vserver: SVM_Beci, destination: 0.0.0.0/0, gateway: x.x.x.200 }
-  - { vserver: SVM_David, destination: 0.0.0.0/0, gateway: x.x.x.200 }
+  - { vserver: SVM_Beci, destination: 0.0.0.0/0, gateway: x.x.x.254 }
+  - { vserver: SVM_David, destination: 0.0.0.0/0, gateway: y.y.y.254 }
 
 cifsad: # Vservers to join to an AD Domain
 #  - { vserver: SVM_Beci, cifs_server_name: svm_beci, domain: "DOMAIN", admin_user: "USER",admin_password: "PASS", force: true } # Example 1 - Active Directory
@@ -87,20 +89,22 @@ cifsad: # Vservers to join to an AD Domain
 cifsworkgroup: # Vservers to join to a local workgroup
   - { vserver: SVM_David, cifs_server_name: netapp2, workgroup: test, force: true }
 
-  
+
 nfs: # Vservers to configure for NFS
   - { vserver: SVM_Beci, nfsv3: enabled, vstorage: enabled }
   - { vserver: SVM_David, nfsv3: enabled, vstorage: enabled }
 
 exportrules:
   - { name: EP1, client_match: x.x.x.0/24, vserver: SVM_Beci }
-  - { name: EP1, client_match: 1.1.1.0/24, vserver: SVM_Beci }
-  - { name: EP1, client_match: x.x.x.0/24, vserver: SVM_David }
-  - { name: EP2, client_match: 1.1.1.0/24, vserver: SVM_David }
-  
+  - { name: EP2, client_match: x.x.x.0/24, vserver: SVM_David }
+
 volumes:
   - { name: vol1, aggr: "{{ hosts['node1'].aggregate.name }}", size: 10, policy: EP1, snappercent: 3, vserver: SVM_Beci, securitystyle: unix  }
   - { name: vol2, aggr: "{{ hosts['node1'].aggregate.name }}", size: 10, policy: EP1, snappercent: 3, vserver: SVM_Beci, securitystyle: unix  }
   - { name: vol3, aggr: "{{ hosts['node1'].aggregate.name }}", size: 10, policy: EP2, snappercent: 3, vserver: SVM_David, securitystyle: unix  }
   - { name: vol4, aggr: "{{ hosts['node1'].aggregate.name }}", size: 10, policy: EP1, snappercent: 3, vserver: SVM_David, securitystyle: unix  }
+
+sp:
+  - { node: "{{ hosts['node1'].name }}", dhcp: none, ip_enabled: true, address_type: ipv4, state: present, ip_address: x.x.x.x, netmask: 255.255.255.0, gateway: x.x.x.x }
+  - { node: "{{ hosts['node2'].name }}", dhcp: none, ip_enabled: true, address_type: ipv4, state: present, ip_address: x.x.x.x, netmask: 255.255.255.0, gateway: x.x.x.x }
 
