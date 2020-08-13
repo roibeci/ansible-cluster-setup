@@ -13,41 +13,23 @@
   name: "Build cluster: {{ cluster }}"
 
   tasks:
-  - name: create cluster
+  - name: Create Cluster
     na_ontap_cluster:
       state: present
       cluster_name: "{{ cluster }}"
       hostname: "{{ hosts['node1'].ip }}"
       use_rest: "Always"
       <<: *login
-  - name: "Join Node to {{ cluster }}"
-    na_ontap_cluster:
-        state: present
-        cluster_ip_address:  "{{ hosts['node2'].private_ip }}"
-        hostname: "{{ hosts['node1'].ip }}"
-        <<: *login
-    tags:
-    - debug
+#    na_ontap_command:
+#        hostname: "{{ hosts['node2'].ip }}"
+#        command: ['network', 'interface', 'show', ' -vserver ', 'Cluster', '-lif', 'clus1']
+#        <<: *login
 
   - name: Rename node1
     na_ontap_command:
-        hostname: "{{ hostname }}"
+        hostname: "{{ hosts['node1'].ip }}"
         command: ['node', 'rename', '-node', '*1', '-newname', "{{ hosts['node1'].name }}"]
         <<: *login
-
-
-  - name: Rename node2
-    na_ontap_command:
-        hostname: "{{ hostname }}"
-        command: ['node', 'rename', '-node', '*2', '-newname', "{{ hosts['node2'].name }}"]
-        <<: *login
-
-  - name: Rename Cluster
-    na_ontap_command:
-        hostname: "{{ hostname }}"
-        command: ['cluster', 'identity', 'modify', '-name', "{{ cluster }}"]
-        <<: *login
-
 
   - name: Create cluster mgmt lif
     na_ontap_interface:
@@ -61,6 +43,67 @@
       home_port: e0M
       hostname: "{{ hosts['node1'].ip }}"
       <<: *login
+
+  - name: Create Private cluster lif for node2
+    ignore_errors: yes
+    na_ontap_interface:
+      state: present
+      interface_name: "clus3"
+      vserver: "Cluster"
+      address: "{{ hosts['node2'].cluster.private_ip }}"
+      netmask: "{{ hosts['node2'].cluster.netmask }}"
+      role: cluster
+      home_node: "localhost"
+      home_port: e0a
+      hostname: "{{ hosts['node2'].ip }}"
+      <<: *login
+
+  - name: Limit Info Gathering to Interface Information
+    na_ontap_info:
+      state: info
+      hostname: "{{ hosts['node1'].ip }}"
+      gather_subset: "net_interface_info"
+      use_rest: "Always"
+      <<: *login
+    register: ontap_info_net
+    tags:
+    - debug
+  
+#  - set_fact:
+#      #mgmt_lifs: "{{ item.value.address }}"
+#       
+#    with_dict: "{{ ontap_info_net.ontap_info.net_interface_info }}"
+#    when: 
+#      - item.value.vserver == "BuciCluster" 
+#    register: mgmt_lifs="{{ item.value.address }}"
+#    tags:
+#      - debug
+#
+#  - debug:
+#      msg: "{{ mgmt_lifs }}"
+#    tags:
+#      - debug
+
+  - name: "Join Node to {{ cluster }}"
+    na_ontap_cluster:
+        state: present
+        cluster_ip_address:  "{{ hosts['node2'].cluster.private_ip }}"
+        hostname: "{{ hosts['node1'].ip }}"
+        <<: *login
+    tags:
+    - debug2
+
+  - name: Rename node2
+    na_ontap_command:
+        hostname: "{{ hosts['node2'].ip }}"
+        command: ['node', 'rename', '-node', '*2', '-newname', "{{ hosts['node2'].name }}"]
+        <<: *login
+
+  - name: Rename Cluster
+    na_ontap_command:
+        hostname: "{{ hosts['node1'].ip }}"
+        command: ['cluster', 'identity', 'modify', '-name', "{{ cluster }}"]
+        <<: *login
 
 - name: import playbook
   import_playbook: config.yml
