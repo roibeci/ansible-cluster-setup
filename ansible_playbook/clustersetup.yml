@@ -1,0 +1,29 @@
+---
+- hosts: localhost
+  tasks:
+    - name: Create cluster
+      na_ontap_cluster:
+        state: present
+        cluster_name: BuciCluster
+        hostname: "10.68.65.243"
+        username: "admin"
+        password: "netapp123"
+        use_rest: "Always"
+        validate_certs: "false" 
+        https: "true"
+    - name: Add license from cluster
+      na_ontap_cluster:
+        state: present
+        cluster_name: BuciCluster
+        license_code: WADMPGVTTXKZOFAAAAAAAAAAAAAA
+        hostname: "10.68.65.243"
+        username: "admin"
+        password: "netapp123"
+    - name: Join cluster
+      na_ontap_cluster:
+        state: present
+        cluster_name: BuciCluster
+        hostname: "10.68.65.244"
+        username: "admin"
+        password: "netapp123"
+

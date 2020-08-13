@@ -1,0 +1,113 @@
+---
+- hosts: localhost
+  gather_facts: false
+  collections:
+    - netapp.ontap
+  vars_files: "{{ file }}"
+  vars:
+    login: &login
+      username: "{{ username }}"
+      password: "{{ password }}"
+      https: true
+      validate_certs: false
+  name: "Build cluster: {{ cluster }}"
+
+  tasks:
+  - name: Create Cluster
+    na_ontap_cluster:
+      state: present
+      cluster_name: "{{ cluster }}"
+      hostname: "{{ hosts['node1'].ip }}"
+      use_rest: "Always"
+      <<: *login
+
+  - name: Get Cluster LIF info on Node02
+    uri:
+      url: http://{{ hosts['node2'].ip }}/api/cluster
+      user: "{{ usernmae }}"
+      password: "{{ password }}"
+      method: GET
+      force_basic_auth: yes
+      status_code: 201
+
+  - name: Get Cluster LIF on Node02
+    na_ontap_command:
+        hostname: "{{ hosts['node2'].ip }}"
+        command: ['network', 'interface', 'show', ' -vserver ', 'Cluster', '-lif', 'clus1']
+        <<: *login
+    tags:
+      - test
+
+  - name: Limit Info Gathering to Interface Information
+    na_ontap_info:
+      state: info
+      hostname: "{{ hosts['node2'].ip }}"
+      gather_subset: "net_interface_info"
+      use_rest: "Always"
+      <<: *login
+    register: ontap_info_net
+    tags:
+    - debug
+  
+  - set_fact:
+      #msg: "{{ n2_name }}"
+      #msg: "{{ item.key }} = {{ item.value.address }}"
+      #set_facts:
+      n2_clus_lif: "{{ item.value.address }}" 
+    with_dict: "{{ ontap_info_net.ontap_info.net_interface_info }}"
+    when: 
+      - item.value.vserver == "Cluster" 
+      #- item.value.current_node == hosts['node2'].name
+    tags:
+      - debug
+
+  - debug:
+      msg: "{{ n2_clus_lif }}"
+    tags:
+      - debug
+
+  - name: "Join Node to {{ cluster }}"
+    na_ontap_cluster:
+        state: present
+        cluster_ip_address:  "{{ n2_clus_lif }}"
+        hostname: "{{ hosts['node1'].ip }}"
+        <<: *login
+    tags:
+      - join
+
+  - name: Rename node1
+    na_ontap_command:
+        hostname: "{{ hosts['node1'].ip }}"
+        command: ['node', 'rename', '-node', '*1', '-newname', "{{ hosts['node1'].name }}"]
+        <<: *login
+
+
+  - name: Rename node2
+    na_ontap_command:
+        hostname: "{{ hosts['node2'].ip }}"
+        command: ['node', 'rename', '-node', '*2', '-newname', "{{ hosts['node2'].name }}"]
+        <<: *login
+
+  - name: Rename Cluster
+    na_ontap_command:
+        hostname: "{{ hosts['node1'].ip }}"
+        command: ['cluster', 'identity', 'modify', '-name', "{{ cluster }}"]
+        <<: *login
+
+
+  - name: Create cluster mgmt lif
+    na_ontap_interface:
+      state: present
+      interface_name: "{{ cluster }}_mgmt"
+      vserver: "{{ cluster }}"
+      address: "{{ hostname }}"
+      netmask: "{{ netmask }}"
+      role: cluster-mgmt
+      home_node: "{{ hosts['node1'].name }}"
+      home_port: e0M
+      hostname: "{{ hosts['node1'].ip }}"
+      <<: *login
+
+- name: import playbook
+  import_playbook: config.yml
+
