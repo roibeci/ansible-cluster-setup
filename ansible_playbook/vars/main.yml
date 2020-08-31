@@ -1,4 +1,5 @@
-#replace x.x.x.x
+#replace x.x.x. to your ip's
+
 base_license: XXXXXXXXXXXXXXXX #Optional since ontap 9.2+
 cluster: BuciCluster
 hostname: "x.x.x.242"
@@ -33,8 +34,8 @@ licenses:
 motd: "Welcome to XXXXX Storage System. This is a monitored system! "
 
 dns:
-  - { dns_domains: domain.local, dns_nameservers: x.x.x.17, vserver: "{{ cluster }}"}
-  - { dns_domains: domain.local, dns_nameservers: x.x.x.17, vserver: SVM_Beci}
+  - { dns_domains: domain.local, dns_nameservers: "x.x.x.17,x.x.x.18", vserver: "{{ cluster }}"}
+  - { dns_domains: domain.local, dns_nameservers: "x.x.x.17,x.x.x.18", vserver: SVM_Beci}
   - { dns_domains: domain.local, dns_nameservers: x.x.x.17, vserver: SVM_David}
 
 ntp:
@@ -53,6 +54,9 @@ ports:
   - { node: "{{hosts['node2'].name }}", port: e0e, mtu: 1500 , flowcontrol: none, autonegotiate: true}
   - { node: "{{hosts['node2'].name }}", port: e0f, mtu: 1500 , flowcontrol: none, autonegotiate: true}
 
+loginUsers:
+  - { username: "test1", password: "8LetterLength", apps: "http,console", role: "readonly", vserver: "BuciCluster" }
+
 ifgrps:
   - { name: a0a, node: "{{hosts['node1'].name }}", ports: "e0c,e0e", mode: multimode_lacp, mtu: 9000, distribution_function: ip }
   - { name: a0a, node: "{{hosts['node2'].name }}", ports: "e0c,e0e", mode: multimode_lacp, mtu: 9000, distribution_function: ip }
@@ -70,7 +74,16 @@ vlans:
 
 bcasts:
   - { name: vlan_400, ports: "{{hosts['node1'].name }}:a0a-400,{{hosts['node2'].name }}:a0a-400", mtu: 1500 }
-  - { name: Default, ports: "{{hosts['node1'].name }}:a0a-300,{{hosts['node2'].name }}:a0a-300", mtu: 1500 }
+  - { name: vlan_300, ports: "{{hosts['node1'].name }}:a0a-300,{{hosts['node2'].name }}:a0a-300", mtu: 1500 }
+  - { name: BD-Mgmt, ports: "{{hosts['node1'].name }}:e0c,{{hosts['node2'].name }}:e0c", mtu: 1500 }
+
+bcastRename:
+  old_name: "Default"
+  new_name: "BD-Mgmt"
+
+bcastsMTU:
+  - { name: BD-Mgmt, mtu: 1500 }
+  - { name: vlan_400, mtu: 9000 }
 
 vservers:
   - { name: SVM_Beci, root_volume_aggregate: "{{ hosts['node1'].aggregate.name }}" , root_volume_security_style: unix }
@@ -94,8 +107,8 @@ cifsworkgroup: # Vservers to join to a local workgroup
 
 
 nfs: # Vservers to configure for NFS
-  - { vserver: SVM_Beci, nfsv3: enabled, vstorage: enabled }
-  - { vserver: SVM_David, nfsv3: enabled, vstorage: enabled }
+  - { vserver: SVM_Beci, nfsv3: enabled, nfsv4: disabled, nfsv41: enabled, vstorage: enabled }
+  - { vserver: SVM_David, nfsv3: enabled, nfsv4: disabled, nfsv41: enabled, vstorage: enabled }
 
 exportrules:
   - { name: EP1, client_match: 0.0.0.0/0, vserver: SVM_Beci }
@@ -114,11 +127,11 @@ sp:
   - { node: "{{ hosts['node2'].name }}", dhcp: none, ip_enabled: true, address_type: ipv4, state: present, ip_address: x.x.x.241, netmask: 255.255.255.0, gateway: x.x.x.1 }
 
 cifsAcl:
-  - { share_name: vol1, vserver: SVM_David, user: test, permission: full_control }
-  - { share_name: vol1, vserver: SVM_David, user: Everyone, permission: read }
+  - { share_name: vol1, vserver: SVM_David, user: test, permission: full_control } # not availible this version..
+  - { share_name: vol1, vserver: SVM_David, user: Everyone, permission: read } # not availible this version..
 
 cifsShares:
-  - { share_name: vol1, vserver: SVM_Beci, share_properties: "browsable,oplocks", symlink_properties: "read_only,enable" }
-  - { share_name: vol2, vserver: SVM_Beci, share_properties: "browsable,oplocks", symlink_properties: "read_only,enable" }
-  - { share_name: vol3, vserver: SVM_David, share_properties: "browsable,oplocks", symlink_properties: "read_only,enable" }
-  - { share_name: vol4, vserver: SVM_David, share_properties: "browsable,oplocks", symlink_properties: "read_only,enable" }
+  - { share_name: share1, vol_path: "/vol1", vserver: SVM_Beci, share_properties: "browsable,oplocks", symlink_properties: "enable" }
+  - { share_name: share2, vol_path: "/vol2", vserver: SVM_Beci, share_properties: "browsable,oplocks", symlink_properties: "enable" }
+  - { share_name: share3, vol_path: "/vol3", vserver: SVM_David, share_properties: "browsable,oplocks", symlink_properties: "enable" }
+  - { share_name: share4 ,vol_path: "/vol4", vserver: SVM_David, share_properties: "browsable,oplocks", symlink_properties: "enable" }
