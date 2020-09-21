@@ -105,6 +105,17 @@
         command: ['cluster', 'identity', 'modify', '-name', "{{ cluster }}"]
         <<: *login
 
+  - name: Add SSH to admin
+    na_ontap_user:
+      hostname: "{{ hosts['node1'].ip }}"
+      state: present
+      name: admin
+      authentication_method: password
+      applications: ssh,console,http,ontapi,service-processor
+      role_name: admin
+      vserver: "{{ cluster }}"
+      <<: *login
+
 - name: import playbook
   import_playbook: config.yml
 
