@@ -1,25 +1,24 @@
 base_license: XXXXXXXXXXXXXXXX #Optional since ontap 9.2+
 cluster: BuciCluster
-hostname: "10.68.65.242"
+hostname: "10.10.10.242"
 netmask: "255.255.255.0"
 username: "admin"
 password: "netapp123"
 https_global: "true"
 validate_certs_global: "false"
-mgmt_home_port: e0c
+mgmt_home_port: "e0c"
+mgmt_broadcast_mtu: "1360"
+mgmt_broadcast_name: "BD-Mgmt"
+system_type: "FAS2750"  # possible values =  FAS2552 or FAS2750
 
 hosts:
   node1:
     name: "Buciclustern1"
-    ip: "10.68.65.243"
+    ip: "10.10.10.243"
     subnet: "255.255.255.0"
-    aggregate:
-       name: "n1_data"
-       diskcount: "10"
-       raidsize: "28"
   node2:
     name: "Buciclustern2"
-    ip: "10.68.65.244"
+    ip: "10.10.10.244"
     cluster:
        private_ip: 169.254.10.11   #DO NOT CHANGE
        netmask: 255.255.0.0        #DO NOT CHANGE
@@ -31,10 +30,15 @@ licenses:
 
 motd: "Welcome to XXXXX Storage System. This is a monitored system! "
 
+aggrs:
+  - { node: "{{hosts['node1'].name }}", name: "n1_data1", disktype: "SSD", raidsize: "28", raidtype: "raid_dp", disksize: "137G", diskcount: 5, ssdcount: 4}
+  - { node: "{{hosts['node2'].name }}", name: "n2_data1", disktype: "SSD", raidsize: "28", raidtype: "raid_dp", disksize: "137G", diskcount: 5, ssdcount: 0}
+  - { node: "{{hosts['node2'].name }}", name: "n2_data2", disktype: "SSD", raidsize: "28", raidtype: "raid_dp", disksize: "137G", diskcount: 5, ssdcount: 0}
+
 dns:
-  - { dns_domains: domain.local, dns_nameservers: 10.68.65.17, vserver: "{{ cluster }}"}
-  - { dns_domains: domain.local, dns_nameservers: 10.68.65.17, vserver: SVM_Beci}
-  - { dns_domains: domain.local, dns_nameservers: 10.68.65.17, vserver: SVM_David}
+  - { dns_domains: domain.local, dns_nameservers: "10.10.10.17,10.10.10.18", vserver: "{{ cluster }}"}
+  - { dns_domains: domain.local, dns_nameservers: "10.10.10.17,10.10.10.18", vserver: SVM_Beci}
+  - { dns_domains: domain.local, dns_nameservers: 10.10.10.17, vserver: SVM_David}
 
 ntp:
   - { server_name: domain.local, version: auto }
@@ -52,11 +56,16 @@ ports:
   - { node: "{{hosts['node2'].name }}", port: e0e, mtu: 1500 , flowcontrol: none, autonegotiate: true}
   - { node: "{{hosts['node2'].name }}", port: e0f, mtu: 1500 , flowcontrol: none, autonegotiate: true}
 
+loginUsers:
+  - { username: "test1", password: "8LetterLength", apps: "http,console", role: "readonly", vserver: "BuciCluster" }
+  - { username: "VserverAdmin", password: "8LetterLength", apps: "http,ssh", role: "vsadmin", vserver: "SVM_Buci" }
+
+
 ifgrps:
-  - { name: a0a, node: "{{hosts['node1'].name }}", ports: "e0c,e0e", mode: multimode_lacp, mtu: 9000, distribution_function: ip }
-  - { name: a0a, node: "{{hosts['node2'].name }}", ports: "e0c,e0e", mode: multimode_lacp, mtu: 9000, distribution_function: ip }
-  - { name: a0b, node: "{{hosts['node1'].name }}", ports: "e0d,e0f", mode: multimode_lacp, mtu: 1500, distribution_function: ip }
-  - { name: a0b, node: "{{hosts['node2'].name }}", ports: "e0d,e0f", mode: multimode_lacp, mtu: 1500, distribution_function: ip }
+  - { name: a0a, node: "{{hosts['node1'].name }}", ports: "e0e", mode: multimode_lacp, mtu: 9000, distribution_function: ip }
+  - { name: a0a, node: "{{hosts['node2'].name }}", ports: "e0e", mode: multimode_lacp, mtu: 9000, distribution_function: ip }
+  - { name: a0b, node: "{{hosts['node1'].name }}", ports: "e0d", mode: multimode_lacp, mtu: 1500, distribution_function: ip }
+  - { name: a0b, node: "{{hosts['node2'].name }}", ports: "e0d", mode: multimode_lacp, mtu: 1500, distribution_function: ip }
 
 
 vlans:
@@ -68,21 +77,26 @@ vlans:
   - { vlanid: 62, node: "{{hosts['node2'].name }}", phy_interface: "a0a" }
 
 bcasts:
-  - { name: vlan_400, ports: "{{hosts['node1'].name }}:a0a-400,{{hosts['node2'].name }}:a0a-400", mtu: 1500 }
-  - { name: Default, ports: "{{hosts['node1'].name }}:a0a-300,{{hosts['node2'].name }}:a0a-300", mtu: 1500 }
+  - { name: vlan_400, ports: "{{hosts['node1'].name }}:a0a-400,{{hosts['node2'].name }}:a0a-400", mtu: 9000 }
+  - { name: vlan_300, ports: "{{hosts['node1'].name }}:a0a-300,{{hosts['node2'].name }}:a0a-300", mtu: 1500 }
+  - { name: "{{mgmt_broadcast_name}}", ports: "{{hosts['node1'].name }}:e0c,{{hosts['node2'].name }}:e0c", mtu: "{{mgmt_broadcast_mtu}}" }
+
+bcastRename:
+  old_name: "Default"
+  new_name: "{{mgmt_broadcast_name}}"
 
 vservers:
-  - { name: SVM_Beci, root_volume_aggregate: "{{ hosts['node1'].aggregate.name }}" , root_volume_security_style: unix }
-  - { name: SVM_David, root_volume_aggregate: "{{ hosts['node1'].aggregate.name }}" , root_volume_security_style: unix }
+  - { name: SVM_Beci, root_volume_aggregate: "{{ aggrs[0].name }}" , root_volume_security_style: unix }
+  - { name: SVM_David, root_volume_aggregate: "{{ aggrs[0].name }}" , root_volume_security_style: unix }
 
 lifs:
-  - { name: lif1, node: "{{ hosts['node1'].name }}", port: a0a-400, address: 1.1.1.1, netmask: 255.255.255.0, vserver: SVM_Beci, role: data, protocols: cifs,nfs }
-  - { name: lif2, node: "{{ hosts['node2'].name }}", port: a0a-300, address: 1.1.2.2, netmask: 255.255.255.0, vserver: SVM_Beci, role: data, protocols: cifs,nfs }
-  - { name: lif1, node: "{{ hosts['node2'].name }}", port: a0a-300, address: 1.3.2.2, netmask: 255.255.255.0, vserver: SVM_David, role: data, protocols: cifs,nfs }
+  - { name: lif1, node: "{{ hosts['node1'].name }}", port: a0a-400, address: 1.1.1.1, netmask: 255.255.255.0, vserver: SVM_Beci, role: data, protocols: "cifs,nfs", firewall_policy: "mgmt-nfs" }
+  - { name: lif2, node: "{{ hosts['node2'].name }}", port: a0a-300, address: 1.1.2.2, netmask: 255.255.255.0, vserver: SVM_Beci, role: data, protocols: "cifs,nfs", firewall_policy: "mgmt-nfs"}
+  - { name: lif1, node: "{{ hosts['node2'].name }}", port: a0a-300, address: 1.3.2.2, netmask: 255.255.255.0, vserver: SVM_David, role: data, protocols: "iscsi", firewall_policy: "data" }
 
 gateway: #if a different default route/gateway then the clusters default needs to be added
-  - { vserver: SVM_Beci, destination: 0.0.0.0/0, gateway: 10.68.65.1 }
-  - { vserver: SVM_David, destination: 0.0.0.0/0, gateway: 10.68.65.1 }
+  - { vserver: SVM_Beci, destination: 0.0.0.0/0, gateway: 10.10.10.1 }
+  - { vserver: SVM_David, destination: 0.0.0.0/0, gateway: 10.10.10.1 }
 
 cifsad: # Vservers to join to an AD Domain
 #  - { vserver: SVM_Beci, cifs_server_name: svm_beci, domain: "DOMAIN", admin_user: "USER",admin_password: "PASS", force: true } # Example 1 - Active Directory
@@ -93,8 +107,8 @@ cifsworkgroup: # Vservers to join to a local workgroup
 
 
 nfs: # Vservers to configure for NFS
-  - { vserver: SVM_Beci, nfsv3: enabled, vstorage: enabled }
-  - { vserver: SVM_David, nfsv3: enabled, vstorage: enabled }
+  - { vserver: SVM_Beci, nfsv3: enabled, nfsv4: disabled, nfsv41: enabled, vstorage: enabled }
+  - { vserver: SVM_David, nfsv3: enabled, nfsv4: disabled, nfsv41: enabled, vstorage: enabled }
 
 exportrules:
   - { name: EP1, client_match: 0.0.0.0/0, vserver: SVM_Beci }
@@ -103,21 +117,21 @@ exportrules:
   - { name: EP2, client_match: 1.1.1.0/24, vserver: SVM_David }
 
 volumes:
-  - { name: vol1, aggr: "{{ hosts['node1'].aggregate.name }}", size: 10, policy: EP1, snappercent: 3, vserver: SVM_Beci, securitystyle: unix  }
-  - { name: vol2, aggr: "{{ hosts['node1'].aggregate.name }}", size: 10, policy: EP1, snappercent: 3, vserver: SVM_Beci, securitystyle: unix  }
-  - { name: vol3, aggr: "{{ hosts['node1'].aggregate.name }}", size: 10, policy: EP2, snappercent: 3, vserver: SVM_David, securitystyle: unix  }
-  - { name: vol4, aggr: "{{ hosts['node1'].aggregate.name }}", size: 10, policy: EP1, snappercent: 3, vserver: SVM_David, securitystyle: unix  }
+  - { name: vol1, aggr: "n1_data1", size: 10, policy: EP1, snappercent: 3, vserver: SVM_Beci, securitystyle: unix  }
+  - { name: vol2, aggr: "n1_data1", size: 10, policy: EP1, snappercent: 3, vserver: SVM_Beci, securitystyle: unix  }
+  - { name: vol3, aggr: "n1_data1", size: 10, policy: EP2, snappercent: 3, vserver: SVM_David, securitystyle: unix  }
+  - { name: vol4, aggr: "n1_data1", size: 10, policy: EP1, snappercent: 3, vserver: SVM_David, securitystyle: unix  }
 
 sp:
-  - { node: "{{ hosts['node1'].name }}", dhcp: none, ip_enabled: true, address_type: ipv4, state: present, ip_address: 10.68.65.240, netmask: 255.255.255.0, gateway: 10.68.65.1 }
-  - { node: "{{ hosts['node2'].name }}", dhcp: none, ip_enabled: true, address_type: ipv4, state: present, ip_address: 10.68.65.241, netmask: 255.255.255.0, gateway: 10.68.65.1 }
+  - { node: "{{ hosts['node1'].name }}", dhcp: none, ip_enabled: true, address_type: ipv4, state: present, ip_address: 10.10.10.240, netmask: 255.255.255.0, gateway: 10.10.10.1 }
+  - { node: "{{ hosts['node2'].name }}", dhcp: none, ip_enabled: true, address_type: ipv4, state: present, ip_address: 10.10.10.241, netmask: 255.255.255.0, gateway: 10.10.10.1 }
 
 cifsAcl:
-  - { share_name: vol1, vserver: SVM_David, user: test, permission: full_control }
-  - { share_name: vol1, vserver: SVM_David, user: Everyone, permission: read }
+  - { share_name: vol1, vserver: SVM_David, user: test, permission: full_control } # not availible this version..
+  - { share_name: vol1, vserver: SVM_David, user: Everyone, permission: read } # not availible this version..
 
 cifsShares:
-  - { share_name: vol1, vserver: SVM_Beci, share_properties: "browsable,oplocks", symlink_properties: "read_only,enable" }
-  - { share_name: vol2, vserver: SVM_Beci, share_properties: "browsable,oplocks", symlink_properties: "read_only,enable" }
-  - { share_name: vol3, vserver: SVM_David, share_properties: "browsable,oplocks", symlink_properties: "read_only,enable" }
-  - { share_name: vol4, vserver: SVM_David, share_properties: "browsable,oplocks", symlink_properties: "read_only,enable" }
+  - { share_name: share1, vol_path: "/vol1", vserver: SVM_Beci, share_properties: "browsable,oplocks", symlink_properties: "enable" }
+  - { share_name: share2, vol_path: "/vol2", vserver: SVM_Beci, share_properties: "browsable,oplocks", symlink_properties: "enable" }
+  - { share_name: share3, vol_path: "/vol3", vserver: SVM_David, share_properties: "browsable,oplocks", symlink_properties: "enable" }
+  - { share_name: share4 ,vol_path: "/vol4", vserver: SVM_David, share_properties: "browsable,oplocks", symlink_properties: "enable" }
