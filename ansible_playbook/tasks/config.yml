@@ -11,6 +11,7 @@
       password: "{{ password }}"
       https: true
       validate_certs: false
+     # ansible_command_timeout: 10
   name: "Build Configurations: {{ cluster }}"
 
   tasks:
@@ -40,16 +41,35 @@
       na_ontap_command:
         command: ['set d -c off;  disk option modify -node ',"{{ hosts['node1'].name }}",' -autoassign off;disk option modify -node ',"{{ hosts['node2'].name }}",' -autoassign off;disk partition removeowner { -partition-index 1 -owner-node-name ',"{{ hosts['node2'].name }}" , ' -container-type spare }']
         <<: *login
+   
+    - name: Remove Disk Ownership from whole disks
+      na_ontap_command:
+        command: ['set d -c off; disk removeowner {-owner ',"{{ hosts['node1'].name }}",' -container-type spare}; disk removeowner {-owner ',"{{ hosts['node2'].name }}",' -container-type spare}']
+        <<: *login
 
     - name: Assign Disk Partition Ownership to Node01 # Fixed
       na_ontap_command:
         command: ['set d -c off ;disk partition assign {-container-type unassigned } -owner ', "{{ hosts['node1'].name }}"]
-        #command: ['set', 'd', '-c', 'off', ';', 'disk', 'assign', '-all', 'true', '-node', "{{ hosts['node1'].name }}"]
         <<: *login
+
+    - name: Assign Specific Disks for creating Aggregates
+      na_ontap_command:
+        command: ['set d -c off; disk assign -type {{ item.disktype }} -count {{ item.diskcount | int + 1 }} -owner {{ item.node }}']
+        <<: *login
+      with_items:
+        "{{ aggrs }}"
+      when: aggrs != None
+
+    - name: Assign FlashPool Disks
+      na_ontap_command:
+        command: ['set d -c off; disk assign -type SSD -count {{ item.diskcount | int + 1}} -owner {{ item.node }}']
+        <<: *login
+      with_items:
+        "{{ aggrs }}"
+      when: (item.diskcount > 0)
 
     - name: Zero Spares and Enable Auto-Assign #Fixed !
       na_ontap_command:
-        #command: ['set', 'd', '-c', 'off', ';', 'disk', 'zerospares', '-use-physical-zeroing', 'false', ';', 'disk', 'option', 'modify', '-node', '*', '-autoassign', 'on']
         command: ['set', 'd', '-c', 'off', ';', 'disk', 'zerospares']
         command: ['set d -c off;  disk option modify -node ',"{{ hosts['node1'].name }}",' -autoassign on;disk option modify -node ',"{{ hosts['node2'].name }}",' -autoassign on; disk zerospares']
         <<: *login
@@ -75,11 +95,32 @@
       na_ontap_aggregate:
         state: present
         service_state: online
-        name: "{{ hosts['node1'].aggregate.name }}"
-        disk_count: "{{ hosts['node1'].aggregate.diskcount }}"
-        raid_size: "{{ hosts['node1'].aggregate.raidsize }}"
-        nodes: "{{ hosts['node1'].name }}"
+        name: "{{ item.name }}"
+        disk_count: "{{ item.diskcount }}"
+        disk_size_with_unit: "{{ item.disksize }}"
+        raid_type: "{{ item.raidtype }}"
+        disk_type: "{{ item.disktype }}"
+        raid_size: "{{ item.raidsize }}"
+        nodes: "{{ item.node }}"
         <<: *login
+      with_items:
+        "{{ aggrs }}"
+      when: aggrs != none
+      tags: aggr
+    
+    - name: Adding Flash-Pool to Aggregate
+      na_ontap_command:
+        command: ["storage aggregate modify -aggregate {{item.name}} -hybrid-enabled true; storage aggregate add-disks -aggregate {{item.name}} -diskcount {{item.ssdcount}} -disktype SSD -raidtype raid4"]
+        return_dict: true
+        <<: *login
+      with_items:
+        "{{ aggrs }}"
+      when: (item.ssdcount > 0)
+      tags: aggr1
+      register: FlashPool
+    #- debug: 
+    #    msg: "{{ item.stdout_lines }}"
+    #  with_items: "{{ FlashPool.results }}"
 
     - name: Set Battery Override init
       na_ontap_command:
@@ -97,6 +138,7 @@
       with_items:
         "{{ ntp }}"
       when: ntp != None
+      tags: ntp
 
     - name: Create SNMP community
       na_ontap_snmp:
@@ -122,6 +164,16 @@
       with_items:
         "{{ ports }}"
       when: ports != None
+
+    - name: Modify MTU to existing bcast
+      async: 6
+      poll: 2
+      ignore_errors: true
+      na_ontap_broadcast_domain:
+        state: present
+        name: "{{mgmt_broadcast_name}}"
+        mtu: "{{ mgmt_broadcast_mtu }}"
+        <<: *login
 
     - name: Modify Net Port
       ignore_errors: yes
@@ -177,7 +229,10 @@
     - name: Handle the error
       block:
         - name: create broadcast domain
+          no_log: true
           #ignore_errors: yes
+          async: 6
+          poll: 5
           na_ontap_broadcast_domain:
             state: present
             broadcast_domain: "{{ item.name }}"
@@ -192,6 +247,21 @@
         - debug:
             msg: "You cannot change Mgmt port Broadcast domain"
 
+    - name: Limit Info Gathering to Broadcast Domain
+      na_ontap_info:
+        state: info
+        gather_subset:
+          - net_port_broadcast_domain_info
+        <<: *login
+      register: ontap_info_bcast
+      tags: debug
+
+    - fail:
+        msg: " Mgmt port MTU has NOT been changed to {{ mgmt_broadcast_mtu }} "
+      when: "{{ ontap_info_bcast.ontap_info.net_port_broadcast_domain_info['BD-Mgmt:Default'].mtu }} != {{ mgmt_broadcast_mtu }}"
+      tags: debug
+
+
     - name: Create Vserver
       na_ontap_svm:
         state: present
@@ -199,11 +269,11 @@
         root_volume: "{{ item.name }}_root"
         root_volume_aggregate: "{{ item.root_volume_aggregate }}"
         root_volume_security_style: "{{ item.root_volume_security_style}}"
-        aggr_list: "{{ hosts['node1'].aggregate.name }}"
         <<: *login
       with_items:
         "{{ vservers }}"
       when: vservers != None
+      tags: vserver
 
     - name: Create Login Users
       na_ontap_user:
@@ -227,6 +297,7 @@
         home_node: "{{ item.node }}"
         role: "{{ item.role }}" #data
         protocols: "{{ item.protocols }}" #cifs,nfs
+        firewall_policy: "{{ item.firewall_policy }}"
         admin_status: up
         address: "{{ item.address }}"
         netmask: "{{ item.netmask }}"
@@ -236,6 +307,7 @@
       with_items:
         "{{ lifs }}"
       when: lifs != None
+      tags: lifs
 
 #   - name: Modify Mgmt interfaces
 #      na_ontap_interface:
@@ -396,21 +468,12 @@
 #      when: cifsAcl != None
 
     - name: Modify Mgmt Home Port
+      no_log: true
+      async: 10
+      poll: 5
       na_ontap_command:
         command: ['set d -c off ; network interface modify {-vserver ',"{{ cluster }}",'} -home-port ',"{{ mgmt_home_port }}",' ; network interface revert *']
         <<: *login
-
-    - name: Modify MTU to existing bcast
-      na_ontap_broadcast_domain:
-        state: present
-        name: "{{ item.name }}"
-        mtu: "{{ item.mtu }}"
-        <<: *login
-      with_items:
-        "{{ bcastsMTU }}"
-      when: bcastsMTU != None
-
-#- name: ONTAP software update
     #  na_ontap_software_update:
      #    state: present
     #    nodes: "{{ item }}"
