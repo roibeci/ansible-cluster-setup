@@ -54,9 +54,12 @@
       netmask: "{{ hosts['node2'].cluster.netmask }}"
       role: cluster
       home_node: "localhost"
-      home_port: e0a
+      home_port: "{{ 'e0a' if 'FAS2750' in item else 'e0e' if 'FAS2552' in item }}"
       hostname: "{{ hosts['node2'].ip }}"
       <<: *login
+    with_items:
+      "{{ system_type }}"
+    when: system_type != None
 
   - name: Limit Info Gathering to Interface Information
     na_ontap_info:
@@ -105,7 +108,7 @@
         command: ['cluster', 'identity', 'modify', '-name', "{{ cluster }}"]
         <<: *login
 
-  - name: Add SSH to admin
+  - name: Add SSH to admin 
     na_ontap_user:
       hostname: "{{ hosts['node1'].ip }}"
       state: present
@@ -115,6 +118,9 @@
       role_name: admin
       vserver: "{{ cluster }}"
       <<: *login
+    tags:
+      - deb
+
 
 - name: import playbook
   import_playbook: config.yml
